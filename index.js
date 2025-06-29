@@ -127,11 +127,17 @@ app.post('/webhook', async (req, res) => {
       for (const event of entry.messaging) {
         const senderId = event.sender.id;
 
-        const isFromPage = event.sender.id === entry.id;
-        if (isFromPage) continue;
+        // Nếu là tin nhắn do page gửi (admin), thì lưu vào danh sách đã trả lời
+        if (event.message?.is_echo) {
+          recentReplies[senderId] = 'admin';
+          continue;
+        }
 
-        const lastReply = recentReplies[senderId];
-        if (lastReply && Date.now() - lastReply < 10 * 60 * 1000) continue;
+        // Nếu đã có admin trả lời thì bot không trả lời nữa
+        if (recentReplies[senderId] === 'admin') continue;
+
+        // Nếu đã trả lời gần đây trong 10 phút thì bỏ qua
+        if (recentReplies[senderId] && Date.now() - recentReplies[senderId] < 10 * 60 * 1000) continue;
 
         if (event.message && event.message.text) {
           recentReplies[senderId] = Date.now();
