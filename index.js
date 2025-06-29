@@ -27,12 +27,12 @@ app.post("/webhook", async (req, res) => {
 
   // Prepare GPT prompt
   const prompt = [
-    { role: "system", content: "Bạn là nhân viên tư vấn của Cody Studio – chuyên quay phóng sự cưới. Trả lời khách nhẹ nhàng, rõ ràng, dễ hiểu, xoay quanh báo giá, gói dịch vụ, flycam, Same Day Edit." },
+    { role: "system", content: "Bạn là nhân viên tư vấn của Cody Studio – chuyên quay phóng sự cưới. Trả lời khách nhẹ nhàng, rõ ràng, dễ hiểu, xoay quanh báo giá, gói dịch vụ, flycam, Same Day Edit, các gói khuyến mãi từng tháng, quà tặng kèm, hỏi ngày tổ chức, địa điểm tổ chức, sáng lễ chiều tiệc hay tách ngày, có lễ nhà thờ không" },
     { role: "user", content: text }
   ];
 
   const gptRes = await axios.post("https://api.openai.com/v1/chat/completions", {
-    model: "gpt-3.5-turbo",
+    model: "gpt-4o",
     messages: prompt
   }, {
     headers: { Authorization: `Bearer ${OPENAI_API_KEY}` }
