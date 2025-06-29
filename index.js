@@ -13,6 +13,9 @@ const PORT = process.env.PORT || 3000;
 const memory = {}; // Lưu info từng khách
 const recentReplies = {}; // Đánh dấu tin đã được admin trả lời
 
+// === PROMPT ĐỊNH HƯỚNG ===
+const SYSTEM_PROMPT = `Bạn là chatbot tư vấn dịch vụ cưới của Cody Studio. Khi nói chuyện với khách, bạn luôn xưng "Cody" và gọi khách là "mình" hoặc "em/chị/anh" một cách tự nhiên, thân thiện. Hãy giữ ngôn ngữ mềm mại, nhẹ nhàng và rõ ràng như cách một nhân viên tư vấn dày dạn kinh nghiệm trò chuyện với cô dâu chú rể sắp cưới, không tư vấn những gì mình không biết. Đừng trả lời nếu admin đã phản hồi.`;
+
 // === HỖ TRỢ GỬI TIN NHẮN ===
 async function sendMessage(recipientId, message, imageUrl = null) {
   const messages = Array.isArray(message) ? message : [message];
@@ -44,8 +47,7 @@ async function handleMessage(senderId, messageText) {
   if (!user.hasSentPackages) {
     user.hasSentPackages = true;
     await sendMessage(senderId, 'Dạ, dưới đây là 3 gói ưu đãi của tháng bên em nhen ❤️');
-
-    await sendMessage(senderId, `💕 PACKAGE 1 – 2 máy quay phóng sự + 2 máy chụp hình
+      await sendMessage(senderId, `💕 PACKAGE 1 – 2 máy quay phóng sự + 2 máy chụp hình
 💸 Giá ưu đãi: 𝟭𝟲.𝟱𝟬𝟬.𝟬𝟬𝟬đ (Giá gốc 𝟭𝟵.𝟬𝟬𝟬.𝟬𝟬𝟬đ)
 
 🌟 Ưu đãi đặc biệt khi book trong tháng dành cho 10 khách đầu tiên:
