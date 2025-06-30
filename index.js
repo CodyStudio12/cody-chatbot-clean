@@ -262,19 +262,10 @@ async function handleMessage(senderId, messageText) {
     return;
   }
 
-
-
-  // Nếu đã gửi 3 package thì không gọi GPT nữa, chỉ trả lời rule cứng
-  if (user.hasSentPackages) {
-    return;
-  }
   // Nếu không khớp rule cứng nào thì trả lời mặc định
   await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhen.');
   memory[senderId] = user; saveMemory();
   return;
-
-  // Nếu không khớp logic nào, kiểm tra block reply 3 ngày hoặc 30 phút sau agent
-  // (đoạn này không còn cần thiết vì đã return ở trên)
 }
 
 // Facebook webhook: nhận tin nhắn từ nhiều khách
