@@ -167,12 +167,13 @@ async function handleMessage(senderId, messageText) {
   if (missing.length > 0) {
     // Gọi GPT để hỏi info tự nhiên, không hỏi cứng
     if (!user.gptHistory) user.gptHistory = [];
-    user.gptHistory.push({ role: 'user', content: messageText });
-    let gptReply = await callOpenAI(user.gptHistory, messageText);
+    let gptHistoryForCall = [...user.gptHistory, { role: 'user', content: messageText }];
+    let gptReply = await callOpenAI(gptHistoryForCall, messageText);
     // Nếu GPT trả lời quá ngắn hoặc không tự nhiên thì fallback
     if (!gptReply || gptReply.length < 10) {
       gptReply = 'Cody cảm ơn bạn đã nhắn tin! Bạn có thể cho Cody biết thêm về ngày tổ chức, địa điểm hoặc mong muốn của mình không ạ?';
     }
+    user.gptHistory.push({ role: 'user', content: messageText });
     const replyParts = gptReply.split(/\n+/).map(s => s.trim()).filter(Boolean);
     for (const part of replyParts) {
       user.gptHistory.push({ role: 'assistant', content: part });
@@ -370,12 +371,13 @@ async function handleMessage(senderId, messageText) {
   }
   // Nếu không khớp rule, gọi GPT-4.1 Turbo với prompt tự nhiên
   if (!user.gptHistory) user.gptHistory = [];
-  user.gptHistory.push({ role: 'user', content: messageText });
-  let gptReply = await callOpenAI(user.gptHistory, messageText);
+  let gptHistoryForCall = [...user.gptHistory, { role: 'user', content: messageText }];
+  let gptReply = await callOpenAI(gptHistoryForCall, messageText);
   // Xử lý nếu GPT trả lời quá ngắn hoặc không tự nhiên
   if (gptReply && gptReply.length < 10) {
     gptReply = 'Cody cảm ơn bạn đã nhắn tin! Bạn có thể cho Cody biết thêm về ngày tổ chức, địa điểm hoặc mong muốn của mình không ạ?';
   }
+  user.gptHistory.push({ role: 'user', content: messageText });
   // Tách câu trả lời thành nhiều đoạn nếu có xuống dòng, gửi từng đoạn như người thật
   const replyParts = gptReply.split(/\n+/).map(s => s.trim()).filter(Boolean);
   for (const part of replyParts) {
