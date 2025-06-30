@@ -143,13 +143,26 @@ async function callOpenAI(history, userMsg) {
 
 // Main logic: handle message for each user
 async function handleMessage(senderId, messageText) {
-
   // Load or init user state
   let user = memory[senderId] || {
     date: null, location: null, type: null, hasSentPackages: false, sessionStarted: false, lastInteraction: Date.now()
   };
   user.lastInteraction = Date.now();
   const lower = messageText.toLowerCase();
+
+  // Nếu đã đủ info, đã gửi ưu đãi, nhưng khách hỏi lại về giá/gói/ưu đãi thì nhắc lại 3 gói ưu đãi
+  if (
+    user.hasSentPackages &&
+    /giá|gói|ưu đãi|package|bảng giá|bao nhiêu|khuyến mãi|khuyến mại|promotion|offer/i.test(lower)
+  ) {
+    await sendMessage(senderId, [
+      'Dạ, Cody nhắc lại 3 gói ưu đãi của tháng bên em nhen ❤️',
+      '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ\n👉 https://www.facebook.com/photo1',
+      '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ\n👉 https://www.facebook.com/photo2',
+      '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ\n👉 https://www.facebook.com/photo3'
+    ]);
+    // Không return, để bot vẫn tiếp tục trả lời tự nhiên bằng GPT nếu cần
+  }
 
 
   // 1. Sameday Edit là gì
