@@ -161,11 +161,11 @@ async function handleMessage(senderId, messageText) {
 
   // Hỏi tiếp nếu thiếu info (chỉ hỏi 1 lần, không lặp lại khi khách vừa gửi info)
   let missing = [];
-  if (!user.date) missing.push('**ngày tổ chức cưới**');
-  if (!user.location) missing.push('**địa điểm tổ chức**');
-  if (!user.type) missing.push('**sáng lễ chiều tiệc hay tiệc trưa**');
+  if (!user.date) missing.push('date');
+  if (!user.location) missing.push('location');
+  if (!user.type) missing.push('type');
   if (missing.length > 0) {
-    await sendMessage(senderId, `Cho Cody xin ${missing.join(', ')} của mình luôn nè`);
+    await sendMessage(senderId, 'Hi, Cho Cody hỏi mình có ngày tổ chức chưa ha? mình tổ chức SG hay sao nè, với mình làm lễ sáng và tiệc tối hay sao ha?');
     return;
   }
 
