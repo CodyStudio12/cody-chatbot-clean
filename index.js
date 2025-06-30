@@ -4,21 +4,12 @@ const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
 
-const OpenAI = require('openai');
 const app = express();
 app.use(express.json());
 
-
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const PORT = process.env.PORT || 3000;
-
-// OpenAI config
-let openai = null;
-if (OPENAI_API_KEY) {
-  openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-}
 
 if (!PAGE_ACCESS_TOKEN || !VERIFY_TOKEN) {
   console.error('Missing PAGE_ACCESS_TOKEN or VERIFY_TOKEN');
@@ -74,7 +65,7 @@ async function sendMessage(recipientId, message, imageUrl = null) {
 async function handleMessage(senderId, messageText) {
   // Load or init user state
   let user = memory[senderId] || {
-    date: null, location: null, type: null, hasSentPackages: false, sessionStarted: false, lastInteraction: Date.now()
+    date: null, location: null, type: null, hasSentPackages: false, lastInteraction: Date.now()
   };
   user.lastInteraction = Date.now();
   const lower = messageText.toLowerCase();
@@ -94,12 +85,12 @@ async function handleMessage(senderId, messageText) {
   if (!user.location) missing.push('location');
   if (!user.type) missing.push('type');
   if (missing.length > 0) {
-    if (!user.sessionStarted) {
+    if (!user.greeted) {
       await sendMessage(senderId, 'Hello Dâu nè ❤️ Cody cảm ơn vì đã nhắn tin ạ~');
-      user.sessionStarted = true;
+      user.greeted = true;
     }
     if (!user.date) await sendMessage(senderId, 'Cho Cody xin ngày tổ chức luôn nha');
-    if (!user.location) await sendMessage(senderId, 'Cho Cody xin địa điểm tổ chức luôn nha (SG hay ở tỉnh nè...)');
+    if (!user.location) await sendMessage(senderId, 'Với địa điểm tổ chức luôn nha (SG hay ở tỉnh nè...))');
     if (!user.type) await sendMessage(senderId, 'Lễ cưới của mình là sáng lễ, chiều tiệc hay tiệc trưa ha?');
     memory[senderId] = user; saveMemory();
     return;
@@ -168,22 +159,23 @@ async function handleMessage(senderId, messageText) {
     return;
   }
 
-  // Nếu đã đủ info, đã gửi ưu đãi, nhưng khách hỏi lại về giá/gói/ưu đãi thì nhắc lại 3 gói ưu đãi
-  if (
-    user.hasSentPackages &&
-    /giá|gói|ưu đãi|package|bảng giá|bao nhiêu|khuyến mãi|khuyến mại|promotion|offer/i.test(lower)
-  ) {
-    await sendMessage(senderId, 'Dạ, Cody nhắc lại 3 gói ưu đãi của tháng bên em nhen ❤️');
-    // Package 1
-    await sendMessage(senderId, '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png');
-    // Package 2
-    await sendMessage(senderId, '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/prJNtnMQ/1.png');
-    // Package 3
-    await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/hPMwbd8x/2.png');
-    // Không return, để bot vẫn tiếp tục trả lời tự nhiên bằng GPT nếu cần
+  // Nếu đã đủ info, đã gửi ưu đãi, và khách nói về package cụ thể thì nhắn đợi agent
+  if (user.hasSentPackages) {
+    // Nếu khách hỏi đúng package 1, 2, 3 hoặc số lượng máy trùng package
+    if (/package\s*1|gói\s*1|2\s*quay.*2\s*chụp|2\s*chụp.*2\s*quay/i.test(lower)) {
+      await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhé');
+      return;
+    }
+    if (/package\s*2|gói\s*2|1\s*quay.*2\s*chụp|2\s*chụp.*1\s*quay|1\s*chụp.*2\s*quay|2\s*quay.*1\s*chụp/i.test(lower)) {
+      await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhé');
+      return;
+    }
+    if (/package\s*3|gói\s*3|1\s*quay.*1\s*chụp|1\s*chụp.*1\s*quay/i.test(lower)) {
+      await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhé');
+      return;
+    }
+    // Nếu không trùng rule cứng nào thì bot không can thiệp
+    return;
   }
 
   // --- Kết thúc block ưu đãi ---
@@ -264,35 +256,14 @@ async function handleMessage(senderId, messageText) {
     return;
   }
 
-  // 3. Sau khi gửi 3 gói package, KHÔNG gửi thêm dòng ưu đãi slot nữa (theo yêu cầu mới)
 
-  // Opening messages
-  const OPENING_MESSAGES = [
-    'hi', 'tư vấn giúp em', 'tư vấn', 'quay giá bao nhiêu', 'chụp giá bao nhiêu',
-    'quay chụp giá bao nhiêu', 'em muốn hỏi gói quay chụp', 'em muốn tư vấn cưới',
-    'cho em hỏi giá quay chụp'
-  ];
-  if (!user.sessionStarted && OPENING_MESSAGES.some(msg => lower.includes(msg))) {
-    user.sessionStarted = true;
-    memory[senderId] = user; saveMemory();
-    // Ưu tiên dùng few-shot style: gửi từng câu như assistant mẫu
-    const openingFewShot = [
-      'Hello Dâu nè ❤️ Cody cảm ơn vì đã nhắn tin ạ~',
-      'Mình đã có ngày tổ chức chưa nhen?',
-      'Cho Cody xin luôn địa điểm tổ chức nha (SG hay ở tỉnh nè...) Lễ cưới của mình là sáng lễ chiều tiệc hay tiệc trưa ha.'
-    ];
-    for (const part of openingFewShot) {
-      await sendMessage(senderId, part);
-    }
-    return;
-  }
 
   // Nếu đã gửi 3 package thì không gọi GPT nữa, chỉ trả lời rule cứng
   if (user.hasSentPackages) {
     return;
   }
   // Nếu không khớp rule cứng nào thì trả lời mặc định
-  await sendMessage(senderId, 'Cody cảm ơn bạn đã nhắn tin! Bạn có thể cho Cody biết thêm về ngày tổ chức, địa điểm hoặc mong muốn của mình không ạ?');
+  await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhen.);
   memory[senderId] = user; saveMemory();
   return;
 
