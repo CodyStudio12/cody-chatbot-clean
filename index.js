@@ -226,6 +226,10 @@ async function handleMessage(senderId, messageText) {
 
   // Đủ info, gửi gói ưu đãi 1 lần (chỉ gửi khi đã đủ info)
   if (user.date && user.location && user.type && !user.hasSentPackages) {
+    // Đảm bảo không bị block bởi agentBlockedUntil hoặc các trạng thái khác
+    if (user.agentBlockedUntil && Date.now() < user.agentBlockedUntil) {
+      return;
+    }
     user.hasSentPackages = true;
     memory[senderId] = user; saveMemory();
     await sendMessage(senderId, 'Dạ, dưới đây là 3 gói ưu đãi của tháng này nhen, nhiều phần quà tặng kèm và số lượng có hạn nè ❤️');
