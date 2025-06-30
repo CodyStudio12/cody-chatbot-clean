@@ -59,6 +59,89 @@ async function sendMessage(recipientId, message, imageUrl = null) {
 
 // Main logic: handle message for each user
 async function handleMessage(senderId, messageText) {
+  // 1. Sameday Edit là gì
+  if (/sameday edit là gì|sde là gì/i.test(lower)) {
+    await sendMessage(senderId, 'Sameday Edit là 1 video ngắn 3-4p của buổi sáng gia tiên để chiếu vào tiệc tối nhen');
+    return;
+  }
+
+  // 2. Đi tỉnh không hoặc nhà em ở tỉnh (chưa rõ tỉnh)
+  if (/(bên anh có nhận đi tỉnh|nhà em ở tỉnh|em ở tỉnh|đi tỉnh không)/i.test(lower) && !/(sài gòn|sg|hcm|long an|nhà bè|nha trang|vũng tàu|biên hòa|cần thơ|quận \d+|q\d+|bình thạnh|bình tân|tân bình|tân phú|đức hòa|đức huệ|cà mau|bến tre|vĩnh long|trà vinh|đồng tháp|ba tri)/i.test(lower)) {
+    await sendMessage(senderId, 'Em ở đâu em ha?');
+    return;
+  }
+
+  // 4. Đặt trong tháng này mới có ưu đãi ha anh?
+  if (/đặt trong tháng.*(mới có|mới được).*ưu đãi|ưu đãi.*trong tháng/i.test(lower)) {
+    let xungHo = 'Dâu';
+    if (/anh\b/.test(lower)) xungHo = 'anh';
+    if (/chị\b/.test(lower)) xungHo = 'chị';
+    await sendMessage(senderId, `Đúng rồi ${xungHo}/anh/chị, mình đặt sớm để giữ ngày, block team và block ưu đãi luôn á`);
+    return;
+  }
+
+  // 5. Phí đi lại/di chuyển
+  if (/(phí đi lại|phí di chuyển|phí xe|phí khách sạn|phí phát sinh)/i.test(lower)) {
+    if (user.location && /(sài gòn|sg|hcm)/i.test(user.location)) {
+      await sendMessage(senderId, 'Nếu ở SG thì không có em nè');
+    } else {
+      await sendMessage(senderId, 'Mình phát sinh thêm phí đi lại xe khách và khách sạn cho team nè, được tặng phần chi phí phát sinh đi tỉnh');
+    }
+    return;
+  }
+
+  // 6. Lễ nhà thờ/hôn phối trong ngày cưới
+  if (/(lễ nhà thờ|hôn phối).*phát sinh.*không|có phát sinh.*lễ nhà thờ|có phát sinh.*hôn phối/i.test(lower) && /trong ngày|trong ngày cưới|cùng ngày/i.test(lower)) {
+    await sendMessage(senderId, 'Không phát sinh nếu tổ chức trong ngày cưới nhen');
+    return;
+  }
+
+  // 7. Lễ nhà thờ tách ngày
+  if (/(lễ nhà thờ|hôn phối).*tách ngày|ngày khác|khác ngày/i.test(lower)) {
+    await sendMessage(senderId, 'Em cho anh xin lịch trình chi tiết nhé');
+    user.waitingForSchedule = true;
+    memory[senderId] = user; saveMemory();
+    return;
+  }
+  if (user.waitingForSchedule) {
+    await sendMessage(senderId, 'Em đợi anh xíu nhen');
+    user.agentBlockedUntil = Date.now() + 30 * 60 * 1000;
+    user.waitingForSchedule = false;
+    memory[senderId] = user; saveMemory();
+    return;
+  }
+
+  // 8. Để em bàn lại với chồng/em hỏi ý thêm gia đình
+  if (/để em bàn lại với chồng|em hỏi ý.*gia đình|em hỏi ý thêm gia đình/i.test(lower)) {
+    await sendMessage(senderId, 'Okiee em nè, có gì báo Cody sớm nhen để block ngày và ưu đãi cho em á, do ưu đãi sắp hết rùi');
+    return;
+  }
+
+  // 9. Cho em book hoặc em muốn book gói package 1/2/3
+  if (/cho em book|em muốn book|em muốn book gói|em muốn book package|em muốn đặt gói|em muốn đặt package|em muốn book gói package/i.test(lower)) {
+    await sendMessage(senderId, 'Em đợi xíu anh check cho em nhen');
+    user.agentBlockedUntil = Date.now() + 30 * 60 * 1000;
+    memory[senderId] = user; saveMemory();
+    return;
+  }
+
+  // 10. Xin giá quay/chụp 1 buổi
+  if (/giá.*1 buổi|giá quay 1 buổi|giá chụp 1 buổi|giá 1 buổi chụp|giá 1 buổi quay|giá 1 buổi|giá quay chụp 1 buổi|giá 1 buổi chụp hình quay phim|giá 1 buổi quay phim chụp hình/i.test(lower)) {
+    await sendMessage(senderId, 'Mình cần quay chụp lễ hay tiệc nè?');
+    if (!user.date) await sendMessage(senderId, 'Cho Cody xin ngày tổ chức luôn nha');
+    if (!user.location) await sendMessage(senderId, 'Cho Cody xin địa điểm tổ chức luôn nha');
+    user.agentBlockedUntil = Date.now() + 30 * 60 * 1000;
+    memory[senderId] = user; saveMemory();
+    return;
+  }
+
+  // 3. Sau khi gửi 3 gói package, nhắn thêm ưu đãi
+  if (user.hasSentPackages && !user.hasSentUuDai) {
+    await sendMessage(senderId, 'Ba gói này bên anh đang có ưu đãi trong tháng, hiện tại còn vài slot cuối thui à');
+    user.hasSentUuDai = true;
+    memory[senderId] = user; saveMemory();
+    // Không return, để tránh chặn các reply tiếp theo
+  }
   // Load or init user state
   let user = memory[senderId] || {
     date: null, location: null, type: null, hasSentPackages: false, sessionStarted: false, lastInteraction: Date.now()
@@ -115,8 +198,18 @@ async function handleMessage(senderId, messageText) {
     return;
   }
 
-  // Nếu không khớp logic nào, trả lời mềm mại
+  // Nếu không khớp logic nào, kiểm tra block reply 3 ngày hoặc 30 phút sau agent
+  const now = Date.now();
+  const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
+  const THIRTY_MINUTES = 30 * 60 * 1000;
+  if ((user.blockedUntil && now < user.blockedUntil) || (user.agentBlockedUntil && now < user.agentBlockedUntil)) {
+    // Đang bị block, không trả lời nữa
+    return;
+  }
+  // Gửi tin nhắn và block reply 3 ngày
   await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhen');
+  user.blockedUntil = now + THREE_DAYS;
+  memory[senderId] = user; saveMemory();
 }
 
 // Facebook webhook: nhận tin nhắn từ nhiều khách
@@ -130,6 +223,16 @@ app.post('/webhook', async (req, res) => {
         const isFromBot = event.message?.metadata === 'from_bot';
         const isEcho = event.message?.is_echo;
         const isAdminEcho = isEcho && !isFromBot && event.message?.app_id;
+        // Nếu là agent (không phải bot) nhắn thì block bot 30 phút
+        if (isEcho && !isFromBot && !isAdminEcho) {
+          // Block bot 30 phút không trả lời khách này
+          let user = memory[senderId] || {};
+          const now = Date.now();
+          const THIRTY_MINUTES = 30 * 60 * 1000;
+          user.agentBlockedUntil = now + THIRTY_MINUTES;
+          memory[senderId] = user; saveMemory();
+          return;
+        }
         if (isAdminEcho) return;
         if (event.message?.attachments && !isFromBot) {
           await sendMessage(senderId, 'Cody đã nhận được hình nha~');
