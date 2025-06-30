@@ -94,6 +94,10 @@ async function handleMessage(senderId, messageText) {
   if (!user.location) missing.push('location');
   if (!user.type) missing.push('type');
   if (missing.length > 0) {
+    if (!user.sessionStarted) {
+      await sendMessage(senderId, 'Hello Dâu nè ❤️ Cody cảm ơn vì đã nhắn tin ạ~');
+      user.sessionStarted = true;
+    }
     if (!user.date) await sendMessage(senderId, 'Cho Cody xin ngày tổ chức luôn nha');
     if (!user.location) await sendMessage(senderId, 'Cho Cody xin địa điểm tổ chức luôn nha (SG hay ở tỉnh nè...)');
     if (!user.type) await sendMessage(senderId, 'Lễ cưới của mình là sáng lễ, chiều tiệc hay tiệc trưa ha?');
