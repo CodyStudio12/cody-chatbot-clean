@@ -41,7 +41,7 @@ async function sendTyping(recipientId, action) {
 }
 
 // === PROMPT ĐỊNH HƯỚNG ===
-const SYSTEM_PROMPT = \`Bạn là chatbot tư vấn dịch vụ cưới của Cody Studio. Khi nói chuyện với khách, bạn luôn xưng "Cody" và gọi khách là "mình" hoặc "em/chị/anh" một cách tự nhiên, thân thiện. Hãy giữ ngôn ngữ mềm mại, nhẹ nhàng và rõ ràng như cách một nhân viên tư vấn dày dạn kinh nghiệm trò chuyện với cô dâu chú rể sắp cưới, không tư vấn những gì mình không biết. Đừng trả lời nếu admin đã phản hồi.\`;
+const SYSTEM_PROMPT = `Bạn là chatbot tư vấn dịch vụ cưới của Cody Studio. Khi nói chuyện với khách, bạn luôn xưng "Cody" và gọi khách là "mình" hoặc "em/chị/anh" một cách tự nhiên, thân thiện. Hãy giữ ngôn ngữ mềm mại, nhẹ nhàng và rõ ràng như cách một nhân viên tư vấn dày dạn kinh nghiệm trò chuyện với cô dâu chú rể sắp cưới, không tư vấn những gì mình không biết. Đừng trả lời nếu admin đã phản hồi.`;
 
 // === HỖ TRỢ GỬI TIN NHẮN ===
 async function sendMessage(recipientId, message, imageUrl = null) {
@@ -62,7 +62,7 @@ async function sendMessage(recipientId, message, imageUrl = null) {
         : { text: msg, metadata: 'from_bot' },
     };
     await axios.post(
-      \`https://graph.facebook.com/v18.0/me/messages?access_token=\${PAGE_ACCESS_TOKEN}\`,
+      `https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
       payload
     );
     await sendTyping(recipientId, "typing_off");
@@ -110,7 +110,7 @@ async function handleMessage(senderId, messageText) {
   if (!user.type) missing.push("**sáng lễ chiều tiệc hay tiệc trưa** luôn nha");
 
   if (missing.length > 0) {
-    for (const msg of missing) await sendMessage(senderId, \`Cho Cody xin \${msg}\`);
+    for (const msg of missing) await sendMessage(senderId, `Cho Cody xin ${msg}`);
     return;
   }
 
@@ -178,4 +178,4 @@ app.get('/webhook', (req, res) => {
   else res.sendStatus(403);
 });
 
-app.listen(PORT, () => console.log(\`Bot đang chạy ở cổng \${PORT}\`));
+app.listen(PORT, () => console.log(`Bot đang chạy ở cổng ${PORT}`));
