@@ -175,7 +175,12 @@ async function handleMessage(senderId, messageText) {
     await sendMessage(senderId, '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ\n👉 https://www.facebook.com/photo1');
     await sendMessage(senderId, '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ\n👉 https://www.facebook.com/photo2');
     await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ\n👉 https://www.facebook.com/photo3');
+    return;
   }
+
+  // Nếu không khớp logic nào, chỉ gửi tin "Mình đợi Cody 1 xíu nhen" nhưng không đánh dấu admin, không chặn khách nhắn tiếp
+  await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhen');
+  // Không return ở đây, để khách vẫn có thể nhắn tiếp và bot vẫn trả lời các tin tiếp theo
 }
 
 // === NHẬN WEBHOOK TỪ FACEBOOK ===
@@ -185,13 +190,15 @@ app.post('/webhook', async (req, res) => {
     await Promise.all(body.entry.map(async (entry) => {
       await Promise.all(entry.messaging.map(async (event) => {
         const senderId = event.sender.id;
-        // Chỉ đánh dấu là admin nếu chắc chắn không phải bot gửi (metadata không phải 'from_bot' và is_echo true)
+        // Cải tiến: KHÔNG tự động đánh dấu admin nếu chỉ dựa vào is_echo và thiếu metadata
+        // Chỉ đánh dấu là admin nếu có app_id (tức là do admin thật gửi qua page inbox, không phải do bot)
         const isFromBot = event.message?.metadata === 'from_bot';
+        const isEcho = event.message?.is_echo;
+        const isAdminEcho = isEcho && !isFromBot && event.message?.app_id;
 
-        // Nếu là tin nhắn do page gửi nhưng không phải bot (không có metadata hoặc metadata khác 'from_bot')
-        if (event.message?.is_echo && !isFromBot) {
-          // Để debug, log lại trường hợp này
-          console.log(`[ADMIN REPLY DETECTED] senderId: ${senderId}, message:`, event.message);
+        if (isAdminEcho) {
+          // Chỉ log và đánh dấu admin khi thực sự có app_id (admin thật gửi)
+          console.log(`[ADMIN REPLY DETECTED - app_id] senderId: ${senderId}, message:`, event.message);
           recentReplies[senderId] = "admin";
           saveReplies();
           return;
@@ -214,11 +221,7 @@ app.post('/webhook', async (req, res) => {
         if (event.message && event.message.text && !isFromBot) {
           recentReplies[senderId] = Date.now();
           saveReplies();
-          try {
-            await handleMessage(senderId, event.message.text);
-          } catch (err) {
-            await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhen');
-          }
+          await handleMessage(senderId, event.message.text);
         }
       }));
     }));
