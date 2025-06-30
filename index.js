@@ -159,13 +159,25 @@ async function handleMessage(senderId, messageText) {
   if (!user.type && user.TYPE_REGEX.test(lower)) user.type = messageText;
   memory[senderId] = user; saveMemory();
 
-  // Hỏi tiếp nếu thiếu info (chỉ hỏi 1 lần, không lặp lại khi khách vừa gửi info)
+  // Hỏi tiếp nếu thiếu info (tối ưu tự nhiên, không lặp lại, hỏi đúng info thiếu)
   let missing = [];
-  if (!user.date) missing.push('date');
-  if (!user.location) missing.push('location');
-  if (!user.type) missing.push('type');
+  if (!user.date) missing.push('ngày tổ chức');
+  if (!user.location) missing.push('địa điểm tổ chức');
+  if (!user.type) missing.push('lễ sáng/chiều tiệc/tiệc trưa');
   if (missing.length > 0) {
-    await sendMessage(senderId, 'Hi, Cho Cody hỏi mình có ngày tổ chức chưa ha? mình tổ chức SG hay sao nè, với mình làm lễ sáng và tiệc tối hay sao ha?');
+    let msg = '';
+    if (missing.length === 3) {
+      msg = 'Hi, Cody hỏi mình có ngày tổ chức chưa ha? Mình tổ chức ở đâu nè (SG hay tỉnh), với mình làm lễ sáng, chiều tiệc hay tiệc trưa ha?';
+    } else if (missing.length === 2) {
+      if (!user.date && !user.location) msg = 'Cody hỏi mình có ngày tổ chức và địa điểm tổ chức chưa ha?';
+      else if (!user.date && !user.type) msg = 'Cody hỏi mình có ngày tổ chức và làm lễ sáng/chiều tiệc/tiệc trưa chưa ha?';
+      else if (!user.location && !user.type) msg = 'Cody hỏi mình tổ chức ở đâu và làm lễ sáng/chiều tiệc/tiệc trưa ha?';
+    } else if (missing.length === 1) {
+      if (!user.date) msg = 'Cody hỏi mình có ngày tổ chức chưa ha?';
+      if (!user.location) msg = 'Cody hỏi mình tổ chức ở đâu ha (SG hay tỉnh)?';
+      if (!user.type) msg = 'Cody hỏi mình làm lễ sáng, chiều tiệc hay tiệc trưa ha?';
+    }
+    await sendMessage(senderId, msg);
     return;
   }
 
