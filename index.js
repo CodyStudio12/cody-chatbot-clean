@@ -59,6 +59,14 @@ async function sendMessage(recipientId, message, imageUrl = null) {
 
 // Main logic: handle message for each user
 async function handleMessage(senderId, messageText) {
+
+  // Load or init user state
+  let user = memory[senderId] || {
+    date: null, location: null, type: null, hasSentPackages: false, sessionStarted: false, lastInteraction: Date.now()
+  };
+  user.lastInteraction = Date.now();
+  const lower = messageText.toLowerCase();
+
   // 1. Sameday Edit là gì
   if (/sameday edit là gì|sde là gì/i.test(lower)) {
     await sendMessage(senderId, 'Sameday Edit là 1 video ngắn 3-4p của buổi sáng gia tiên để chiếu vào tiệc tối nhen');
@@ -142,12 +150,6 @@ async function handleMessage(senderId, messageText) {
     memory[senderId] = user; saveMemory();
     // Không return, để tránh chặn các reply tiếp theo
   }
-  // Load or init user state
-  let user = memory[senderId] || {
-    date: null, location: null, type: null, hasSentPackages: false, sessionStarted: false, lastInteraction: Date.now()
-  };
-  user.lastInteraction = Date.now();
-  const lower = messageText.toLowerCase();
 
   // Opening messages
   const OPENING_MESSAGES = [
