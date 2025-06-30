@@ -211,7 +211,8 @@ app.post('/webhook', async (req, res) => {
         }
 
         // Nếu đã bị đánh dấu là admin thì không trả lời nữa
-        if (recentReplies[senderId] === 'admin') return;
+        // Tạm thời bỏ chặn này để debug, luôn cho bot trả lời
+        // if (recentReplies[senderId] === 'admin') return;
 
         // Nếu vừa trả lời trong 10 phút thì không trả lời tiếp
         if (recentReplies[senderId] && typeof recentReplies[senderId] === 'number' && Date.now() - recentReplies[senderId] < 10 * 60 * 1000)
