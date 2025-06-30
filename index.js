@@ -75,7 +75,7 @@ async function callOpenAI(history, userMsg) {
     {
       role: 'system',
       content:
-        'Bạn là Cody, chuyên gia tư vấn dịch vụ quay phim và chụp hình NGÀY CƯỚI của Cody Studio. Chỉ nhận tư vấn quay & chụp NGÀY CƯỚI (lễ gia tiên, lễ rước dâu, tiệc cưới), KHÔNG nhận pre-wedding, không nhận chụp ngoại cảnh, không nhận chụp concept, không nhận chụp studio, không nhận chụp ảnh cưới trước ngày cưới. Nếu khách hỏi về pre-wedding, ngoại cảnh, concept, studio, hãy trả lời lịch sự: "Cody Studio chỉ nhận quay chụp NGÀY CƯỚI (lễ gia tiên, tiệc cưới), không nhận pre-wedding, không nhận chụp ngoại cảnh, không nhận chụp concept, không nhận chụp studio bạn nha!". Luôn xưng hô thân thiện (em/anh/chị/Dâu), hỏi gợi mở về ngày tổ chức, địa điểm, loại lễ. Không spam, không lặp lại, không trả lời ngoài chủ đề NGÀY CƯỚI. Trả lời tự nhiên, ngắn gọn, không lặp lại prompt, không nhắc lại "Cody Studio" hay "chỉ nhận quay chụp ngày cưới" nếu khách không hỏi về pre-wedding. Không tự giới thiệu lại về Cody Studio. Không trả lời máy móc, không lặp lại nội dung hệ thống.'
+        'Bạn là Cody, chuyên gia tư vấn dịch vụ quay phim và chụp hình NGÀY CƯỚI của Cody Studio. Chỉ nhận tư vấn quay & chụp NGÀY CƯỚI (lễ gia tiên, lễ rước dâu, tiệc cưới), KHÔNG nhận pre-wedding, không nhận chụp ngoại cảnh, không nhận chụp concept, không nhận chụp studio, không nhận chụp ảnh cưới trước ngày cưới. Nếu khách hỏi về pre-wedding, ngoại cảnh, concept, studio, hãy trả lời lịch sự: "Cody Studio chỉ nhận quay chụp NGÀY CƯỚI (lễ gia tiên, tiệc cưới), không nhận pre-wedding, không nhận chụp ngoại cảnh, không nhận chụp concept, không nhận chụp studio bạn nha!". Luôn xưng hô thân thiện (em/anh/chị/Dâu), hỏi gợi mở về ngày tổ chức, địa điểm, loại lễ. Không spam, không lặp lại, không trả lời ngoài chủ đề NGÀY CƯỚI. Trả lời tự nhiên, ngắn gọn, không lặp lại prompt, không nhắc lại "Cody Studio" hay "chỉ nhận quay chụp ngày cưới" nếu khách không hỏi về pre-wedding. Không tự giới thiệu lại về Cody Studio. Không trả lời máy móc, không lặp lại nội dung hệ thống, và không quá dài dòng, sử dụng emoji và mỗi câu hỏi luôn là 1 tin nhắn riêng, để giống người hơn.'
     },
     // Few-shot examples for style
     {
@@ -247,21 +247,27 @@ async function handleMessage(senderId, messageText) {
   }
 
   // Nếu đã đủ info, đã gửi ưu đãi, nhưng khách hỏi lại về giá/gói/ưu đãi thì nhắc lại 3 gói ưu đãi
+  // Chỉ nhắc lại 3 gói ưu đãi nếu KHÁCH chưa hỏi trong vòng 3 phút gần nhất
   if (
     user.hasSentPackages &&
     /giá|gói|ưu đãi|package|bảng giá|bao nhiêu|khuyến mãi|khuyến mại|promotion|offer/i.test(lower)
   ) {
-    await sendMessage(senderId, 'Dạ, Cody nhắc lại 3 gói ưu đãi của tháng bên em nhen ❤️');
-    // Package 1
-    await sendMessage(senderId, '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png');
-    // Package 2
-    await sendMessage(senderId, '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/prJNtnMQ/1.png');
-    // Package 3
-    await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/hPMwbd8x/2.png');
-    // Không return, để bot vẫn tiếp tục trả lời tự nhiên bằng GPT nếu cần
+    const now = Date.now();
+    if (!user.lastSentPackagesReminder || now - user.lastSentPackagesReminder > 3 * 60 * 1000) {
+      await sendMessage(senderId, 'Dạ, Cody nhắc lại 3 gói ưu đãi của tháng bên em nhen ❤️');
+      // Package 1
+      await sendMessage(senderId, '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ');
+      await sendMessage(senderId, null, 'https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png');
+      // Package 2
+      await sendMessage(senderId, '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ');
+      await sendMessage(senderId, null, 'https://i.postimg.cc/prJNtnMQ/1.png');
+      // Package 3
+      await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ');
+      await sendMessage(senderId, null, 'https://i.postimg.cc/hPMwbd8x/2.png');
+      user.lastSentPackagesReminder = now;
+      memory[senderId] = user; saveMemory();
+    }
+    return;
   }
 
   // --- Kết thúc block ưu đãi ---
@@ -365,9 +371,25 @@ async function handleMessage(senderId, messageText) {
     return;
   }
 
-  // Nếu đã gửi 3 package thì không gọi GPT nữa, chỉ trả lời rule cứng
+  // Nếu đã gửi 3 package và đã gửi dòng ưu đãi slot, cho phép dùng lại GPT nếu không trùng rule cứng
   if (user.hasSentPackages) {
-    return;
+    // Check các rule cứng sau khi gửi package
+    // Nếu trùng rule cứng thì vẫn ưu tiên trả lời rule cứng và return
+    if (
+      /giá|gói|ưu đãi|package|bảng giá|bao nhiêu|khuyến mãi|khuyến mại|promotion|offer/i.test(lower)
+      || /sameday edit là gì|sde là gì/i.test(lower)
+      || /(bên anh có nhận đi tỉnh|nhà em ở tỉnh|em ở tỉnh|đi tỉnh không)/i.test(lower)
+      || /đặt trong tháng.*(mới có|mới được).*ưu đãi|ưu đãi.*trong tháng/i.test(lower)
+      || /(phí đi lại|phí di chuyển|phí xe|phí khách sạn|phí phát sinh)/i.test(lower)
+      || /(lễ nhà thờ|hôn phối).*phát sinh.*không|có phát sinh.*lễ nhà thờ|có phát sinh.*hôn phối/i.test(lower) && /trong ngày|trong ngày cưới|cùng ngày/i.test(lower)
+      || /(lễ nhà thờ|hôn phối).*tách ngày|ngày khác|khác ngày/i.test(lower)
+      || /để em bàn lại với chồng|em hỏi ý.*gia đình|em hỏi ý thêm gia đình/i.test(lower)
+      || /cho em book|em muốn book|em muốn book gói|em muốn book package|em muốn đặt gói|em muốn đặt package|em muốn book gói package/i.test(lower)
+      || /giá.*1 buổi|giá quay 1 buổi|giá chụp 1 buổi|giá 1 buổi chụp|giá 1 buổi quay|giá 1 buổi|giá quay chụp 1 buổi|giá 1 buổi chụp hình quay phim|giá 1 buổi quay phim chụp hình/i.test(lower)
+    ) {
+      return;
+    }
+    // Nếu không trùng rule cứng thì cho phép gọi lại GPT
   }
   // Nếu không khớp rule, gọi GPT-4.1 Turbo với prompt tự nhiên
   if (!user.gptHistory) user.gptHistory = [];
