@@ -180,14 +180,14 @@ async function handleMessage(senderId, messageText) {
       await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhé');
       return;
     }
-    // Nếu không trùng rule cứng nào thì bot không can thiệp
-    return;
+    // Sau khi gửi package, vẫn cho phép trả lời các rule cứng khác
+    // Không return ở đây, để các rule cứng phía dưới vẫn hoạt động
   }
 
   // --- Kết thúc block ưu đãi ---
 
   // 1. Sameday Edit là gì
-  if (/sameday edit là gì|sde là gì/i.test(lower)) {
+  if (/sameday edit là gì|sameday edit la gi|sde là gì|sde la gi|sameday edit là gì vậy|sameday edit là gì ạ|sameday edit là gì vậy ạ|sameday edit là gì a|sameday edit là gì vậy a/i.test(lower)) {
     await sendMessage(senderId, 'Sameday Edit là 1 video ngắn 3-4p của buổi sáng gia tiên để chiếu vào tiệc tối nhen');
     return;
   }
@@ -208,7 +208,7 @@ async function handleMessage(senderId, messageText) {
   }
 
   // 5. Phí đi lại/di chuyển
-  if (/(phí đi lại|phí di chuyển|phí xe|phí khách sạn|phí phát sinh)/i.test(lower)) {
+  if (/(phí đi lại|phí di chuyển|phí xe|phí khách sạn|phí phát sinh|phát sinh phí đi lại|phát sinh phí di chuyển|phát sinh phí xe|phát sinh phí khách sạn)/i.test(lower)) {
     if (user.location && /(sài gòn|sg|hcm)/i.test(user.location)) {
       await sendMessage(senderId, 'Nếu ở SG thì không có em nè');
     } else {
