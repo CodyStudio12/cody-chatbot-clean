@@ -33,7 +33,7 @@ async function sendMessage(recipientId, message, imageUrl = null) {
 
 // === PHÂN TÍCH NỘI DUNG VÀ TRẢ LỜI ===
 async function handleMessage(senderId, messageText) {
-  const user = memory[senderId] || { date: null, location: null, hasSentPackages: false, sessionStarted: false };
+  const user = memory[senderId] || { date: null, location: null, type: null, hasSentPackages: false, sessionStarted: false };
   const lower = messageText.toLowerCase();
 
   const OPENING_MESSAGES = [
@@ -58,19 +58,28 @@ async function handleMessage(senderId, messageText) {
     return;
   }
 
-  if (!user.date && /\d{1,2}[/\-]\d{1,2}([/\-]\d{2,4})?/.test(lower)) user.date = messageText;
-  if (!user.location && /(sài gòn|sg|hcm|long an|nhà bè|nha trang|vũng tàu|biên hòa|cần thơ|quận 1|q1|quận 2|q2|quận 3|q3|quận 4|q4|quận 5|q5|quận 6|q6|quận 7|q7|quận 8|q8|quận 9|q9|quận 10|q10|quận 11|q11|quận 12|q12|bình thạnh|bình tân|tân bình|tân phú|nhà bè|đức hòa|đức huệ|cần thơ|cà mau|bến tre|vĩnh long|trà vinh|đồng tháp|vũng tàu|ba tri|)/i.test(lower)) user.location = messageText;
+  // Nhận diện ngày tổ chức
+  if (!user.date && /\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?/.test(lower)) user.date = messageText;
+
+  // Nhận diện địa điểm tổ chức
+  if (!user.location && /(sài gòn|sg|hcm|long an|nhà bè|nha trang|vũng tàu|biên hòa|cần thơ|quận \d+|q\d+|bình thạnh|bình tân|tân bình|tân phú|đức hòa|đức huệ|cà mau|bến tre|vĩnh long|trà vinh|đồng tháp|ba tri)/i.test(lower)) user.location = messageText;
+
+  // Nhận diện thời gian lễ/tiệc
+  if (!user.type && /(sáng|chiều|trưa|lễ|tiệc)/i.test(lower)) user.type = messageText;
 
   memory[senderId] = user;
 
   if (!user.date) return sendMessage(senderId, 'Mình note lại nha. Cho mình xin **ngày tổ chức cưới** của mình luôn nè');
   if (!user.location) return sendMessage(senderId, 'Cảm ơn mình nhiều nhen. Cho mình xin thêm **địa điểm tổ chức** luôn nha');
+  if (!user.type) return sendMessage(senderId, 'Và lễ cưới của mình là sáng lễ chiều tiệc hay tiệc trưa ha nhen');
 
   if (!user.hasSentPackages) {
     user.hasSentPackages = true;
     memory[senderId] = user;
     await sendMessage(senderId, 'Dạ, dưới đây là 3 gói ưu đãi của tháng bên em nhen ❤️');
-    // các gói ưu đãi giữ nguyên như trong file
+    await sendMessage(senderId, '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ\n👉 https://www.facebook.com/photo1');
+    await sendMessage(senderId, '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ\n👉 https://www.facebook.com/photo2');
+    await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ\n👉 https://www.facebook.com/photo3');
   }
 }
 
