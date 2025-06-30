@@ -83,6 +83,18 @@ async function handleMessage(senderId, messageText) {
     await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ\n👉 https://www.facebook.com/photo3');
   }
 }
+// Update sendMessage để đính kèm metadata "from_bot"
+async function sendMessage(senderId, messageText) {
+  const body = {
+    recipient: { id: senderId },
+    message: {
+      text: messageText,
+      metadata: "from_bot" // 🏷 Flag để phân biệt tin nhắn của bot
+    }
+  };
+
+  await axios.post(`https://graph.facebook.com/v17.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, body);
+}
 
 // === NHẬN WEBHOOK TỪ FACEBOOK ===
 app.post('/webhook', async (req, res) => {
@@ -90,11 +102,8 @@ app.post('/webhook', async (req, res) => {
   if (body.object === 'page') {
     for (const entry of body.entry) {
       for (const event of entry.messaging) {
-        const senderId = event.sender.id;
-
-        if (event.message?.is_echo) {
-          recentReplies[senderId] = 'admin';
-          continue;
+        const isFromBot = event.message?.metadata === "from_bot";
+if (event.message && !event.message.is_echo && !isFromBot) {
         }
 
         if (recentReplies[senderId] === 'admin') continue;
