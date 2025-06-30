@@ -4,7 +4,7 @@ const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
 
-const { Configuration, OpenAIApi } = require('openai');
+const OpenAI = require('openai');
 const app = express();
 app.use(express.json());
 
@@ -17,8 +17,7 @@ const PORT = process.env.PORT || 3000;
 // OpenAI config
 let openai = null;
 if (OPENAI_API_KEY) {
-  const configuration = new Configuration({ apiKey: OPENAI_API_KEY });
-  openai = new OpenAIApi(configuration);
+  openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 }
 
 if (!PAGE_ACCESS_TOKEN || !VERIFY_TOKEN) {
