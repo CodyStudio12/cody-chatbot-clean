@@ -37,20 +37,16 @@ async function handleMessage(senderId, messageText) {
   const lower = messageText.toLowerCase();
 
   const OPENING_MESSAGES = [
-    "hi",
-    "tư vấn giúp em",
-    "tư vấn",
-    "quay giá bao nhiêu",
-    "chụp giá bao nhiêu",
-    "quay chụp giá bao nhiêu",
-    "em muốn hỏi gói quay chụp",
-    "em muốn tư vấn cưới",
+    "hi", "tư vấn giúp em", "tư vấn", "quay giá bao nhiêu", "chụp giá bao nhiêu",
+    "quay chụp giá bao nhiêu", "em muốn hỏi gói quay chụp", "em muốn tư vấn cưới",
     "cho em hỏi giá quay chụp"
   ];
 
+  // Gặp tin nhắn mở đầu
   if (!user.sessionStarted && OPENING_MESSAGES.some(msg => lower.includes(msg))) {
     user.sessionStarted = true;
     memory[senderId] = user;
+
     await sendMessage(senderId, "Hello Dâu nè ❤️ Cody cảm ơn vì đã nhắn tin ạ~");
     await sendMessage(senderId, "Mình đã có **ngày tổ chức** chưa nhen?");
     await sendMessage(senderId, "Và cho Cody xin luôn **địa điểm tổ chức** nha (SG hay ở tỉnh nè...)");
@@ -58,24 +54,29 @@ async function handleMessage(senderId, messageText) {
     return;
   }
 
-  // Nhận diện ngày tổ chức
-  if (!user.date && /\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?/.test(lower)) user.date = messageText;
-
-  // Nhận diện địa điểm tổ chức
+  // Nhận thông tin từ câu trả lời
+  if (!user.date && /\d{1,2}[/\-]\d{1,2}([/\-]\d{2,4})?/.test(lower)) user.date = messageText;
   if (!user.location && /(sài gòn|sg|hcm|long an|nhà bè|nha trang|vũng tàu|biên hòa|cần thơ|quận \d+|q\d+|bình thạnh|bình tân|tân bình|tân phú|đức hòa|đức huệ|cà mau|bến tre|vĩnh long|trà vinh|đồng tháp|ba tri)/i.test(lower)) user.location = messageText;
-
-  // Nhận diện thời gian lễ/tiệc
-  if (!user.type && /(sáng|chiều|trưa|lễ|tiệc)/i.test(lower)) user.type = messageText;
+  if (!user.type && /(sáng lễ|chiều tiệc|tiệc trưa)/i.test(lower)) user.type = messageText;
 
   memory[senderId] = user;
 
-  if (!user.date) return sendMessage(senderId, 'Mình note lại nha. Cho mình xin **ngày tổ chức cưới** của mình luôn nè');
-  if (!user.location) return sendMessage(senderId, 'Cảm ơn mình nhiều nhen. Cho mình xin thêm **địa điểm tổ chức** luôn nha');
-  if (!user.type) return sendMessage(senderId, 'Và lễ cưới của mình là sáng lễ chiều tiệc hay tiệc trưa ha nhen');
+  // Nếu chưa đủ info → hỏi tiếp cái thiếu
+  const missing = [];
+  if (!user.date) missing.push("**hỏi ngày tổ chức cưới** của mình luôn nè");
+  if (!user.location) missing.push("**hỏi địa điểm tổ chức** luôn nha");
+  if (!user.type) missing.push("**sáng lễ chiều tiệc hay tiệc trưa** luôn nha");
 
+  if (missing.length > 0) {
+    for (const msg of missing) await sendMessage(senderId, `Cho Cody xin ${msg}`);
+    return;
+  }
+
+  // Nếu đủ info → gửi gói ưu đãi
   if (!user.hasSentPackages) {
     user.hasSentPackages = true;
     memory[senderId] = user;
+
     await sendMessage(senderId, 'Dạ, dưới đây là 3 gói ưu đãi của tháng bên em nhen ❤️');
     await sendMessage(senderId, '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ\n👉 https://www.facebook.com/photo1');
     await sendMessage(senderId, '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ\n👉 https://www.facebook.com/photo2');
