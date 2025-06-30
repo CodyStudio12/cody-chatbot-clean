@@ -355,25 +355,7 @@ async function handleMessage(senderId, messageText) {
   // 3. Sau khi gửi 3 gói package, KHÔNG gửi thêm dòng ưu đãi slot nữa (theo yêu cầu mới)
 
   // Opening messages
-  const OPENING_MESSAGES = [
-    'hi', 'tư vấn giúp em', 'tư vấn', 'quay giá bao nhiêu', 'chụp giá bao nhiêu',
-    'quay chụp giá bao nhiêu', 'em muốn hỏi gói quay chụp', 'em muốn tư vấn cưới',
-    'cho em hỏi giá quay chụp'
-  ];
-  if (!user.sessionStarted && OPENING_MESSAGES.some(msg => lower.includes(msg))) {
-    user.sessionStarted = true;
-    memory[senderId] = user; saveMemory();
-    // Ưu tiên dùng few-shot style: gửi từng câu như assistant mẫu
-    const openingFewShot = [
-      'Hello Dâu nè ❤️ Cody cảm ơn vì đã nhắn tin ạ~',
-      'Mình đã có ngày tổ chức chưa nhen?',
-      'Cho Cody xin luôn địa điểm tổ chức nha (SG hay ở tỉnh nè...) Lễ cưới của mình là sáng lễ chiều tiệc hay tiệc trưa ha.'
-    ];
-    for (const part of openingFewShot) {
-      await sendMessage(senderId, part);
-    }
-    return;
-  }
+  // Đã loại bỏ các dòng chào/mở đầu cứng theo yêu cầu, không gửi openingFewShot nữa
 
   // Nếu đã gửi 3 package và đã gửi dòng ưu đãi slot, cho phép dùng lại GPT nếu không trùng rule cứng
   if (user.hasSentPackages) {
