@@ -89,6 +89,12 @@ async function callOpenAI(history, userMsg) {
     });
     return res.data.choices[0].message.content.trim();
   } catch (e) {
+    // Log chi tiết lỗi OpenAI để debug trên Render
+    if (e.response) {
+      console.error('OpenAI API error:', e.response.status, e.response.data);
+    } else {
+      console.error('OpenAI API error:', e.message || e);
+    }
     return 'Xin lỗi, hiện tại bot không kết nối được GPT.';
   }
 }
