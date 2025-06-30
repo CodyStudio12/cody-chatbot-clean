@@ -75,8 +75,50 @@ async function callOpenAI(history, userMsg) {
     {
       role: 'system',
       content:
-        'Bạn là Cody, một chuyên gia tư vấn dịch vụ quay chụp cưới, nói chuyện tự nhiên, thân thiện, gần gũi, luôn chủ động hỏi thêm thông tin để hỗ trợ khách tốt nhất. Hãy xưng hô phù hợp (em/anh/chị/Dâu), trả lời ngắn gọn, không máy móc, không lặp lại câu hỏi, không spam, luôn tạo cảm giác như người thật. Nếu khách chưa cung cấp đủ thông tin (ngày, địa điểm, loại lễ), hãy hỏi khéo léo và gợi mở. Nếu khách hỏi ngoài chủ đề cưới, hãy trả lời lịch sự và chuyển hướng về dịch vụ.'
+        'Bạn là Cody, chuyên gia tư vấn quay chụp cưới, nói chuyện cực kỳ tự nhiên, thân thiện, gần gũi, luôn chủ động hỏi thêm thông tin để hỗ trợ khách tốt nhất. Hãy xưng hô phù hợp (em/anh/chị/Dâu tuỳ ngữ cảnh), trả lời ngắn gọn, không máy móc, không lặp lại câu hỏi, không spam, luôn tạo cảm giác như người thật, dùng từ ngữ trẻ trung, dễ thương, đôi khi thêm icon cảm xúc. Nếu khách chưa cung cấp đủ thông tin (ngày, địa điểm, loại lễ), hãy hỏi khéo léo và gợi mở. Nếu khách hỏi ngoài chủ đề cưới, hãy trả lời lịch sự và chuyển hướng về dịch vụ. Luôn ưu tiên hỏi lại khách về ngày tổ chức, địa điểm, loại lễ nếu chưa rõ.'
     },
+    // Few-shot examples for style
+    {
+      role: 'user',
+      content: 'Hi'
+    },
+    {
+      role: 'user',
+      content: 'Tư vấn'
+    },
+    {
+      role: 'user',
+      content: 'Cần tư vấn'
+    },
+    {
+      role: 'assistant',
+      content: 'Hello Dâu nè ❤️ Cody cảm ơn vì đã nhắn tin ạ~'
+    },
+    {
+      role: 'assistant',
+      content: 'Mình đã có ngày tổ chức chưa nhen?'
+    },
+    {
+      role: 'assistant',
+      content: 'Cho Cody xin luôn địa điểm tổ chức nha (SG hay ở tỉnh nè...) Lễ cưới của mình là sáng lễ chiều tiệc hay tiệc trưa ha.'
+    },
+    {
+      role: 'user',
+      content: 'Bên em có nhận đi tỉnh không?'
+    },
+    {
+      role: 'assistant',
+      content: 'Em ở đâu em ha? Cody nhận đi tỉnh nha, chỉ cần cho Cody xin địa điểm cụ thể để tư vấn kỹ hơn nè.'
+    },
+    {
+      role: 'user',
+      content: 'Để em hỏi ý thêm gia đình rồi báo lại sau.'
+    },
+    {
+      role: 'assistant',
+      content: 'Okiee em nè, có gì báo Cody sớm nhen để block ngày và ưu đãi cho em á, do ưu đãi sắp hết rùi.'
+    },
+    // End few-shot
     ...history.map(h => ({ role: h.role, content: h.content })),
     { role: 'user', content: userMsg }
   ];
@@ -194,19 +236,6 @@ async function handleMessage(senderId, messageText) {
     // Không return, để tránh chặn các reply tiếp theo
   }
 
-  // Nếu không khớp rule, gọi GPT-4.1 Turbo với prompt tự nhiên
-  if (!user.gptHistory) user.gptHistory = [];
-  user.gptHistory.push({ role: 'user', content: messageText });
-  let gptReply = await callOpenAI(user.gptHistory, messageText);
-  // Xử lý nếu GPT trả lời quá ngắn hoặc không tự nhiên
-  if (gptReply && gptReply.length < 10) {
-    gptReply = 'Cody cảm ơn bạn đã nhắn tin! Bạn có thể cho Cody biết thêm về ngày tổ chức, địa điểm hoặc mong muốn của mình không ạ?';
-  }
-  user.gptHistory.push({ role: 'assistant', content: gptReply });
-  memory[senderId] = user; saveMemory();
-  await sendMessage(senderId, gptReply);
-  return;
-
   // Opening messages
   const OPENING_MESSAGES = [
     'hi', 'tư vấn giúp em', 'tư vấn', 'quay giá bao nhiêu', 'chụp giá bao nhiêu',
@@ -224,6 +253,23 @@ async function handleMessage(senderId, messageText) {
     ]);
     return;
   }
+
+  // Nếu không khớp rule, gọi GPT-4.1 Turbo với prompt tự nhiên
+  if (!user.gptHistory) user.gptHistory = [];
+  user.gptHistory.push({ role: 'user', content: messageText });
+  let gptReply = await callOpenAI(user.gptHistory, messageText);
+  // Xử lý nếu GPT trả lời quá ngắn hoặc không tự nhiên
+  if (gptReply && gptReply.length < 10) {
+    gptReply = 'Cody cảm ơn bạn đã nhắn tin! Bạn có thể cho Cody biết thêm về ngày tổ chức, địa điểm hoặc mong muốn của mình không ạ?';
+  }
+  // Tách câu trả lời thành nhiều đoạn nếu có xuống dòng, gửi từng đoạn như người thật
+  const replyParts = gptReply.split(/\n+/).map(s => s.trim()).filter(Boolean);
+  for (const part of replyParts) {
+    user.gptHistory.push({ role: 'assistant', content: part });
+    await sendMessage(senderId, part);
+  }
+  memory[senderId] = user; saveMemory();
+  return;
 
   // Regex nhận diện thông tin
   const LOCATION_REGEX = /(sài gòn|sg|hcm|long an|nhà bè|nha trang|vũng tàu|biên hòa|cần thơ|quận \d+|q\d+|bình thạnh|bình tân|tân bình|tân phú|đức hòa|đức huệ|cà mau|bến tre|vĩnh long|trà vinh|đồng tháp|ba tri)/i;
