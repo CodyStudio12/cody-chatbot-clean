@@ -3,12 +3,23 @@ require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
+
+const { Configuration, OpenAIApi } = require('openai');
 const app = express();
 app.use(express.json());
 
+
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const PORT = process.env.PORT || 3000;
+
+// OpenAI config
+let openai = null;
+if (OPENAI_API_KEY) {
+  const configuration = new Configuration({ apiKey: OPENAI_API_KEY });
+  openai = new OpenAIApi(configuration);
+}
 
 if (!PAGE_ACCESS_TOKEN || !VERIFY_TOKEN) {
   console.error('Missing PAGE_ACCESS_TOKEN or VERIFY_TOKEN');
@@ -57,6 +68,32 @@ async function sendMessage(recipientId, message, imageUrl = null) {
   }
 }
 
+
+// Helper: call OpenAI GPT-4.1 Turbo
+async function callOpenAI(history, userMsg) {
+  if (!openai) return 'Bot chưa cấu hình OpenAI API.';
+  const messages = [
+    {
+      role: 'system',
+      content:
+        'Bạn là Cody, một chuyên gia tư vấn dịch vụ quay chụp cưới, nói chuyện tự nhiên, thân thiện, gần gũi, luôn chủ động hỏi thêm thông tin để hỗ trợ khách tốt nhất. Hãy xưng hô phù hợp (em/anh/chị/Dâu), trả lời ngắn gọn, không máy móc, không lặp lại câu hỏi, không spam, luôn tạo cảm giác như người thật. Nếu khách chưa cung cấp đủ thông tin (ngày, địa điểm, loại lễ), hãy hỏi khéo léo và gợi mở. Nếu khách hỏi ngoài chủ đề cưới, hãy trả lời lịch sự và chuyển hướng về dịch vụ.'
+    },
+    ...history.map(h => ({ role: h.role, content: h.content })),
+    { role: 'user', content: userMsg }
+  ];
+  try {
+    const res = await openai.createChatCompletion({
+      model: 'gpt-4-1106-preview',
+      messages,
+      max_tokens: 300,
+      temperature: 0.7
+    });
+    return res.data.choices[0].message.content.trim();
+  } catch (e) {
+    return 'Xin lỗi, hiện tại bot không kết nối được GPT.';
+  }
+}
+
 // Main logic: handle message for each user
 async function handleMessage(senderId, messageText) {
 
@@ -66,6 +103,7 @@ async function handleMessage(senderId, messageText) {
   };
   user.lastInteraction = Date.now();
   const lower = messageText.toLowerCase();
+
 
   // 1. Sameday Edit là gì
   if (/sameday edit là gì|sde là gì/i.test(lower)) {
@@ -150,6 +188,19 @@ async function handleMessage(senderId, messageText) {
     memory[senderId] = user; saveMemory();
     // Không return, để tránh chặn các reply tiếp theo
   }
+
+  // Nếu không khớp rule, gọi GPT-4.1 Turbo với prompt tự nhiên
+  if (!user.gptHistory) user.gptHistory = [];
+  user.gptHistory.push({ role: 'user', content: messageText });
+  let gptReply = await callOpenAI(user.gptHistory, messageText);
+  // Xử lý nếu GPT trả lời quá ngắn hoặc không tự nhiên
+  if (gptReply && gptReply.length < 10) {
+    gptReply = 'Cody cảm ơn bạn đã nhắn tin! Bạn có thể cho Cody biết thêm về ngày tổ chức, địa điểm hoặc mong muốn của mình không ạ?';
+  }
+  user.gptHistory.push({ role: 'assistant', content: gptReply });
+  memory[senderId] = user; saveMemory();
+  await sendMessage(senderId, gptReply);
+  return;
 
   // Opening messages
   const OPENING_MESSAGES = [
