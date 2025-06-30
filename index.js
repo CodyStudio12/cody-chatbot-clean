@@ -113,29 +113,33 @@ async function handleMessage(senderId, messageText) {
     return;
   }
   if (/2\s*quay.*2\s*chụp|2\s*chụp.*2\s*quay/i.test(lower)) {
-    // Gói 2 quay 2 chụp (Package 1)
-    await sendMessage(senderId, 'Dạ, gói **2 máy quay + 2 máy chụp** (Package 1) bên em giá 16.500.000đ, full ekip quay chụp trọn ngày cưới luôn nha!');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png');
-    await sendMessage(senderId, 'Ngoài ra, bên em còn 2 gói nhẹ hơn nếu mình muốn tiết kiệm chi phí, Cody gửi luôn để mình tham khảo nhé:');
-    await sendMessage(senderId, '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/prJNtnMQ/1.png');
-    await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/hPMwbd8x/2.png');
-    user.hasSentPackages = true;
-    memory[senderId] = user; saveMemory();
+    // Chỉ gửi 1 lần, không lặp lại nếu đã gửi package
+    if (!user.hasSentPackages) {
+      await sendMessage(senderId, 'Dạ, gói **2 máy quay + 2 máy chụp** (Package 1) bên em giá 16.500.000đ, full ekip quay chụp trọn ngày cưới luôn nha!');
+      await sendMessage(senderId, null, 'https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png');
+      await sendMessage(senderId, 'Ngoài ra, bên em còn 2 gói nhẹ hơn nếu mình muốn tiết kiệm chi phí, Cody gửi luôn để mình tham khảo nhé:');
+      await sendMessage(senderId, '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ');
+      await sendMessage(senderId, null, 'https://i.postimg.cc/prJNtnMQ/1.png');
+      await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ');
+      await sendMessage(senderId, null, 'https://i.postimg.cc/hPMwbd8x/2.png');
+      user.hasSentPackages = true;
+      memory[senderId] = user; saveMemory();
+    }
     return;
   }
   if (/1\s*quay.*2\s*chụp|2\s*chụp.*1\s*quay|1\s*chụp.*2\s*quay|2\s*quay.*1\s*chụp/i.test(lower)) {
-    // Gói 1 quay 2 chụp (Package 2)
-    await sendMessage(senderId, 'Dạ, gói **1 máy quay + 2 máy chụp** (Package 2) bên em giá 12.500.000đ, phù hợp cho lễ cưới đông khách hoặc muốn nhiều góc chụp đẹp nha!');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/prJNtnMQ/1.png');
-    await sendMessage(senderId, 'Ngoài ra, bên em còn 2 gói khác để mình tham khảo thêm:');
-    await sendMessage(senderId, '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png');
-    await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/hPMwbd8x/2.png');
-    user.hasSentPackages = true;
-    memory[senderId] = user; saveMemory();
+    // Chỉ gửi 1 lần, không lặp lại nếu đã gửi package
+    if (!user.hasSentPackages) {
+      await sendMessage(senderId, 'Dạ, gói **1 máy quay + 2 máy chụp** (Package 2) bên em giá 12.500.000đ, phù hợp cho lễ cưới đông khách hoặc muốn nhiều góc chụp đẹp nha!');
+      await sendMessage(senderId, null, 'https://i.postimg.cc/prJNtnMQ/1.png');
+      await sendMessage(senderId, 'Ngoài ra, bên em còn 2 gói khác để mình tham khảo thêm:');
+      await sendMessage(senderId, '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ');
+      await sendMessage(senderId, null, 'https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png');
+      await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ');
+      await sendMessage(senderId, null, 'https://i.postimg.cc/hPMwbd8x/2.png');
+      user.hasSentPackages = true;
+      memory[senderId] = user; saveMemory();
+    }
     return;
   }
 
