@@ -159,13 +159,13 @@ async function handleMessage(senderId, messageText) {
   if (!user.type && user.TYPE_REGEX.test(lower)) user.type = messageText;
   memory[senderId] = user; saveMemory();
 
-  // Hỏi tiếp nếu thiếu info (khai báo biến missing duy nhất)
+  // Hỏi tiếp nếu thiếu info (chỉ hỏi 1 lần, không lặp lại khi khách vừa gửi info)
   let missing = [];
-  if (!user.date) missing.push('**hỏi ngày tổ chức cưới** của mình luôn nè');
-  if (!user.location) missing.push('**hỏi địa điểm tổ chức** luôn nha');
-  if (!user.type) missing.push('**sáng lễ chiều tiệc hay tiệc trưa** luôn nha');
+  if (!user.date) missing.push('**ngày tổ chức cưới**');
+  if (!user.location) missing.push('**địa điểm tổ chức**');
+  if (!user.type) missing.push('**sáng lễ chiều tiệc hay tiệc trưa**');
   if (missing.length > 0) {
-    for (const msg of missing) await sendMessage(senderId, `Cho Cody xin ${msg}`);
+    await sendMessage(senderId, `Cho Cody xin ${missing.join(', ')} của mình luôn nè`);
     return;
   }
 
