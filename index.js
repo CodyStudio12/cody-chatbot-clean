@@ -1,8 +1,3 @@
-diff --git a/index.js b/index.js
-index 13ece7ae36d8421c0b3c86ce36b1af7e99582421..29b16b83bb66a66cffdaf921c6e8b67fad153780 100644
---- a/index.js
-+++ b/index.js
-@@ -1,55 +1,64 @@
  // === CẤU HÌNH ===
  require('dotenv').config();
  const express = require('express');
