@@ -10,12 +10,29 @@ const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const PORT = process.env.PORT || 3000;
 
-if (!PAGE_ACCESS_TOKEN || !VERIFY_TOKEN) { console.error("Missing env vars"); process.exit(1); }
-// === BỘ NHỚ TẠM ===
-let memory = {}; // Lưu info từng khách
-const recentReplies = {}; // Đánh dấu tin đã được admin trả lời
-const MEMORY_FILE = "memory.json";
+console.log('== Cody Studio Bot starting ==');
+console.log('PORT:', PORT);
+console.log('PAGE_ACCESS_TOKEN exists:', !!PAGE_ACCESS_TOKEN);
+console.log('VERIFY_TOKEN exists:', !!VERIFY_TOKEN);
 
+if (!PAGE_ACCESS_TOKEN || !VERIFY_TOKEN) {
+  console.error("Missing env vars: PAGE_ACCESS_TOKEN or VERIFY_TOKEN");
+  // Để Render không bị timeout port scan, vẫn cho app listen nhưng báo lỗi rõ ràng
+  app.get('/', (req, res) => {
+    res.status(500).send('Missing PAGE_ACCESS_TOKEN or VERIFY_TOKEN. Check environment variables.');
+  });
+  app.listen(PORT, () => console.log(`Bot đang chạy ở cổng ${PORT} (env error)`));
+  // Không exit(1) để Render detect port
+} else {
+  // ...existing code...
+// === BỘ NHỚ TẠM ===
+
+let memory = {}; // Lưu info từng khách
+let recentReplies = {}; // Đánh dấu tin đã được admin trả lời
+const MEMORY_FILE = "memory.json";
+const REPLIES_FILE = "recentReplies.json";
+
+// Đọc memory
 if (fs.existsSync(MEMORY_FILE)) {
   try {
     memory = JSON.parse(fs.readFileSync(MEMORY_FILE, "utf8"));
@@ -23,9 +40,30 @@ if (fs.existsSync(MEMORY_FILE)) {
     memory = {};
   }
 }
+// Đọc recentReplies
+if (fs.existsSync(REPLIES_FILE)) {
+  try {
+    recentReplies = JSON.parse(fs.readFileSync(REPLIES_FILE, "utf8"));
+  } catch {
+    recentReplies = {};
+  }
+}
 
+// Debounce/throttle saveMemory
+let memorySaveTimeout = null;
 function saveMemory() {
-  fs.writeFileSync(MEMORY_FILE, JSON.stringify(memory, null, 2));
+  if (memorySaveTimeout) clearTimeout(memorySaveTimeout);
+  memorySaveTimeout = setTimeout(() => {
+    fs.writeFileSync(MEMORY_FILE, JSON.stringify(memory, null, 2));
+  }, 2000); // Ghi sau 2s
+}
+
+let repliesSaveTimeout = null;
+function saveReplies() {
+  if (repliesSaveTimeout) clearTimeout(repliesSaveTimeout);
+  repliesSaveTimeout = setTimeout(() => {
+    fs.writeFileSync(REPLIES_FILE, JSON.stringify(recentReplies, null, 2));
+  }, 2000);
 }
 
 function clearStaleUsers() {
@@ -37,7 +75,11 @@ function clearStaleUsers() {
   }
 }
 async function sendTyping(recipientId, action) {
-  await axios.post(`https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, { recipient: { id: recipientId }, sender_action: action });
+  try {
+    await axios.post(`https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, { recipient: { id: recipientId }, sender_action: action });
+  } catch (err) {
+    console.error('sendTyping error:', err?.response?.data || err.message);
+  }
 }
 
 // === PROMPT ĐỊNH HƯỚNG ===
@@ -47,25 +89,30 @@ const SYSTEM_PROMPT = `Bạn là chatbot tư vấn dịch vụ cưới của Cod
 async function sendMessage(recipientId, message, imageUrl = null) {
   const messages = Array.isArray(message) ? message : [message];
   for (const msg of messages) {
-    await sendTyping(recipientId, "typing_on");
-    const payload = {
-      messaging_type: 'RESPONSE',
-      recipient: { id: recipientId },
-      message: imageUrl
-        ? {
-            attachment: {
-              type: 'image',
-              payload: { url: imageUrl, is_reusable: true },
-            },
-              metadata: "from_bot",
-          }
-        : { text: msg, metadata: 'from_bot' },
-    };
-    await axios.post(
-      `https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
-      payload
-    );
-    await sendTyping(recipientId, "typing_off");
+    try {
+      await sendTyping(recipientId, "typing_on");
+      const payload = {
+        messaging_type: 'RESPONSE',
+        recipient: { id: recipientId },
+        message: imageUrl
+          ? {
+              attachment: {
+                type: 'image',
+                payload: { url: imageUrl, is_reusable: true },
+              },
+                metadata: "from_bot",
+            }
+          : { text: msg, metadata: 'from_bot' },
+      };
+      await axios.post(
+        `https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
+        payload
+      );
+    } catch (err) {
+      console.error('sendMessage error:', err?.response?.data || err.message);
+    } finally {
+      await sendTyping(recipientId, "typing_off");
+    }
   }
 }
 
@@ -96,13 +143,17 @@ async function handleMessage(senderId, messageText) {
   }
 
   // Nhận thông tin từ câu trả lời
+
+  // Tách regex location/type ra file riêng nếu muốn mở rộng, ở đây tạm để biến riêng
+  const LOCATION_REGEX = /(sài gòn|sg|hcm|long an|nhà bè|nha trang|vũng tàu|biên hòa|cần thơ|quận \d+|q\d+|bình thạnh|bình tân|tân bình|tân phú|đức hòa|đức huệ|cà mau|bến tre|vĩnh long|trà vinh|đồng tháp|ba tri)/i;
+  const TYPE_REGEX = /(sáng lễ|chiều tiệc|tiệc trưa)/i;
+
   if (!user.date && /\d{1,2}[/\-]\d{1,2}([/\-]\d{2,4})?/.test(lower)) user.date = messageText;
-  if (!user.location && /(sài gòn|sg|hcm|long an|nhà bè|nha trang|vũng tàu|biên hòa|cần thơ|quận \d+|q\d+|bình thạnh|bình tân|tân bình|tân phú|đức hòa|đức huệ|cà mau|bến tre|vĩnh long|trà vinh|đồng tháp|ba tri)/i.test(lower)) user.location = messageText;
-  if (!user.type && /(sáng lễ|chiều tiệc|tiệc trưa)/i.test(lower)) user.type = messageText;
+  if (!user.location && LOCATION_REGEX.test(lower)) user.location = messageText;
+  if (!user.type && TYPE_REGEX.test(lower)) user.type = messageText;
 
     memory[senderId] = user;
-
-  saveMemory();
+    saveMemory();
   // Nếu chưa đủ info → hỏi tiếp cái thiếu
   const missing = [];
   if (!user.date) missing.push("**hỏi ngày tổ chức cưới** của mình luôn nè");
@@ -131,37 +182,46 @@ async function handleMessage(senderId, messageText) {
 app.post('/webhook', async (req, res) => {
   const body = req.body;
   if (body.object === 'page') {
-    for (const entry of body.entry) {
-      for (const event of entry.messaging) {
+    await Promise.all(body.entry.map(async (entry) => {
+      await Promise.all(entry.messaging.map(async (event) => {
         const senderId = event.sender.id;
+        // Chỉ đánh dấu là admin nếu chắc chắn không phải bot gửi (metadata không phải 'from_bot' và is_echo true)
         const isFromBot = event.message?.metadata === 'from_bot';
 
-        // Tin nhắn do page gửi nhưng không phải bot
+        // Nếu là tin nhắn do page gửi nhưng không phải bot (không có metadata hoặc metadata khác 'from_bot')
         if (event.message?.is_echo && !isFromBot) {
+          // Để debug, log lại trường hợp này
+          console.log(`[ADMIN REPLY DETECTED] senderId: ${senderId}, message:`, event.message);
           recentReplies[senderId] = "admin";
-          continue;
+          saveReplies();
+          return;
         }
 
+        // Nếu là file/hình ảnh gửi lên từ khách
         if (event.message?.attachments && !isFromBot) {
           await sendMessage(senderId, "Cody đã nhận được hình nha~");
-          continue;
+          return;
         }
 
-        if (recentReplies[senderId] === 'admin') continue;
+        // Nếu đã bị đánh dấu là admin thì không trả lời nữa
+        if (recentReplies[senderId] === 'admin') return;
 
-        if (recentReplies[senderId] && Date.now() - recentReplies[senderId] < 10 * 60 * 1000)
-          continue;
+        // Nếu vừa trả lời trong 10 phút thì không trả lời tiếp
+        if (recentReplies[senderId] && typeof recentReplies[senderId] === 'number' && Date.now() - recentReplies[senderId] < 10 * 60 * 1000)
+          return;
 
+        // Nếu là tin nhắn text từ khách (không phải bot, không phải admin)
         if (event.message && event.message.text && !isFromBot) {
           recentReplies[senderId] = Date.now();
+          saveReplies();
           try {
             await handleMessage(senderId, event.message.text);
           } catch (err) {
             await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhen');
           }
         }
-      }
-    }
+      }));
+    }));
     res.sendStatus(200);
   } else {
     res.sendStatus(404);
@@ -178,4 +238,5 @@ app.get('/webhook', (req, res) => {
   else res.sendStatus(403);
 });
 
-app.listen(PORT, () => console.log(`Bot đang chạy ở cổng ${PORT}`));
+  app.listen(PORT, () => console.log(`Bot đang chạy ở cổng ${PORT}`));
+}
