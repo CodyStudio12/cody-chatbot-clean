@@ -263,7 +263,7 @@ async function handleMessage(senderId, messageText) {
     return;
   }
   // Nếu không khớp rule cứng nào thì trả lời mặc định
-  await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhen.);
+  await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhen.');
   memory[senderId] = user; saveMemory();
   return;
 
