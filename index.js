@@ -159,25 +159,26 @@ async function handleMessage(senderId, messageText) {
   if (!user.type && user.TYPE_REGEX.test(lower)) user.type = messageText;
   memory[senderId] = user; saveMemory();
 
-  // Hỏi tiếp nếu thiếu info (tối ưu tự nhiên, không lặp lại, hỏi đúng info thiếu)
+  // Luôn để GPT hỏi info tự nhiên trước, chỉ gửi 3 package khi đã đủ info
   let missing = [];
-  if (!user.date) missing.push('ngày tổ chức');
-  if (!user.location) missing.push('địa điểm tổ chức');
-  if (!user.type) missing.push('lễ sáng/chiều tiệc/tiệc trưa');
+  if (!user.date) missing.push('date');
+  if (!user.location) missing.push('location');
+  if (!user.type) missing.push('type');
   if (missing.length > 0) {
-    let msg = '';
-    if (missing.length === 3) {
-      msg = 'Hi, Cody hỏi mình có ngày tổ chức chưa ha? Mình tổ chức ở đâu nè (SG hay tỉnh), với mình làm lễ sáng, chiều tiệc hay tiệc trưa ha?';
-    } else if (missing.length === 2) {
-      if (!user.date && !user.location) msg = 'Cody hỏi mình có ngày tổ chức và địa điểm tổ chức chưa ha?';
-      else if (!user.date && !user.type) msg = 'Cody hỏi mình có ngày tổ chức và làm lễ sáng/chiều tiệc/tiệc trưa chưa ha?';
-      else if (!user.location && !user.type) msg = 'Cody hỏi mình tổ chức ở đâu và làm lễ sáng/chiều tiệc/tiệc trưa ha?';
-    } else if (missing.length === 1) {
-      if (!user.date) msg = 'Cody hỏi mình có ngày tổ chức chưa ha?';
-      if (!user.location) msg = 'Cody hỏi mình tổ chức ở đâu ha (SG hay tỉnh)?';
-      if (!user.type) msg = 'Cody hỏi mình làm lễ sáng, chiều tiệc hay tiệc trưa ha?';
+    // Gọi GPT để hỏi info tự nhiên, không hỏi cứng
+    if (!user.gptHistory) user.gptHistory = [];
+    user.gptHistory.push({ role: 'user', content: messageText });
+    let gptReply = await callOpenAI(user.gptHistory, messageText);
+    // Nếu GPT trả lời quá ngắn hoặc không tự nhiên thì fallback
+    if (!gptReply || gptReply.length < 10) {
+      gptReply = 'Cody cảm ơn bạn đã nhắn tin! Bạn có thể cho Cody biết thêm về ngày tổ chức, địa điểm hoặc mong muốn của mình không ạ?';
     }
-    await sendMessage(senderId, msg);
+    const replyParts = gptReply.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    for (const part of replyParts) {
+      user.gptHistory.push({ role: 'assistant', content: part });
+      await sendMessage(senderId, part);
+    }
+    memory[senderId] = user; saveMemory();
     return;
   }
 
@@ -216,7 +217,7 @@ async function handleMessage(senderId, messageText) {
     return;
   }
 
-  // Đủ info, gửi gói ưu đãi 1 lần (luôn luôn gửi nếu đủ info, không bỏ sót)
+  // Đủ info, gửi gói ưu đãi 1 lần (chỉ gửi khi đã đủ info)
   if (user.date && user.location && user.type && !user.hasSentPackages) {
     user.hasSentPackages = true;
     memory[senderId] = user; saveMemory();
@@ -226,8 +227,8 @@ async function handleMessage(senderId, messageText) {
       '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ\n👉 https://i.postimg.cc/prJNtnMQ/1.png',
       '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ\n👉 https://i.postimg.cc/hPMwbd8x/2.png'
     ]);
-    // Sau khi gửi ưu đãi, tiếp tục trả lời tự nhiên bằng GPT nếu cần
-    // Không return ở đây, để bot có thể tiếp tục trả lời tự nhiên bằng GPT
+    // Không gọi GPT nữa sau khi đã gửi 3 package, chỉ gửi cứng
+    return;
   }
 
   // Nếu đã đủ info, đã gửi ưu đãi, nhưng khách hỏi lại về giá/gói/ưu đãi thì nhắc lại 3 gói ưu đãi
