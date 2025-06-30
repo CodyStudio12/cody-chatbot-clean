@@ -68,78 +68,7 @@ async function sendMessage(recipientId, message, imageUrl = null) {
 }
 
 
-// Helper: call OpenAI GPT-4.1 Turbo
-async function callOpenAI(history, userMsg) {
-  if (!openai) return 'Bot chưa cấu hình OpenAI API.';
-  const messages = [
-    {
-      role: 'system',
-      content:
-        'Bạn là Cody, chuyên gia tư vấn dịch vụ quay phim và chụp hình NGÀY CƯỚI của Cody Studio. Chỉ nhận tư vấn quay & chụp NGÀY CƯỚI (lễ gia tiên, lễ rước dâu, tiệc cưới), KHÔNG nhận pre-wedding, không nhận chụp ngoại cảnh, không nhận chụp concept, không nhận chụp studio, không nhận chụp ảnh cưới trước ngày cưới. Nếu khách hỏi về pre-wedding, ngoại cảnh, concept, studio, hãy trả lời lịch sự: "Cody Studio chỉ nhận quay chụp NGÀY CƯỚI (lễ gia tiên, tiệc cưới), không nhận pre-wedding, không nhận chụp ngoại cảnh, không nhận chụp concept, không nhận chụp studio bạn nha!". Luôn xưng hô thân thiện (em/anh/chị/Dâu), hỏi gợi mở về ngày tổ chức, địa điểm, loại lễ. Không spam, không lặp lại, không trả lời ngoài chủ đề NGÀY CƯỚI. Trả lời tự nhiên, ngắn gọn, không lặp lại prompt, không nhắc lại "Cody Studio" hay "chỉ nhận quay chụp ngày cưới" nếu khách không hỏi về pre-wedding. Không tự giới thiệu lại về Cody Studio. Không trả lời máy móc, không lặp lại nội dung hệ thống, và không quá dài dòng, sử dụng emoji và mỗi câu hỏi luôn là 1 tin nhắn riêng, để giống người hơn.'
-    },
-    // Few-shot examples for style
-    {
-      role: 'user',
-      content: 'Hi'
-    },
-    {
-      role: 'user',
-      content: 'Tư vấn'
-    },
-    {
-      role: 'user',
-      content: 'Cần tư vấn'
-    },
-    {
-      role: 'assistant',
-      content: 'Hello Dâu nè ❤️ Cody cảm ơn vì đã nhắn tin ạ~'
-    },
-    {
-      role: 'assistant',
-      content: 'Mình đã có ngày tổ chức chưa nhen?'
-    },
-    {
-      role: 'assistant',
-      content: 'Cho Cody xin luôn địa điểm tổ chức nha (SG hay ở tỉnh nè...) Lễ cưới của mình là sáng lễ chiều tiệc hay tiệc trưa ha.'
-    },
-    {
-      role: 'user',
-      content: 'Bên em có nhận đi tỉnh không?'
-    },
-    {
-      role: 'assistant',
-      content: 'Em ở đâu em ha? Cody nhận đi tỉnh nha, chỉ cần cho Cody xin địa điểm cụ thể để tư vấn kỹ hơn nè.'
-    },
-    {
-      role: 'user',
-      content: 'Để em hỏi ý thêm gia đình rồi báo lại sau.'
-    },
-    {
-      role: 'assistant',
-      content: 'Okiee em nè, có gì báo Cody sớm nhen để block ngày và ưu đãi cho em á, do ưu đãi sắp hết rùi.'
-    },
-    // End few-shot
-    ...history.map(h => ({ role: h.role, content: h.content })),
-    { role: 'user', content: userMsg }
-  ];
-  try {
-    const res = await openai.chat.completions.create({
-      model: 'gpt-4-1106-preview',
-      messages,
-      max_tokens: 300,
-      temperature: 0.7
-    });
-    return res.choices[0].message.content.trim();
-  } catch (e) {
-    // Log chi tiết lỗi OpenAI để debug trên Render
-    if (e.response) {
-      console.error('OpenAI API error:', e.response.status, e.response.data);
-    } else {
-      console.error('OpenAI API error:', e.message || e);
-    }
-    return 'Xin lỗi, hiện tại bot không kết nối được GPT.';
-  }
-}
+
 
 // Main logic: handle message for each user
 async function handleMessage(senderId, messageText) {
@@ -159,26 +88,15 @@ async function handleMessage(senderId, messageText) {
   if (!user.type && user.TYPE_REGEX.test(lower)) user.type = messageText;
   memory[senderId] = user; saveMemory();
 
-  // Luôn để GPT hỏi info tự nhiên trước, chỉ gửi 3 package khi đã đủ info
+  // Chỉ hỏi info còn thiếu bằng rule cứng, không dùng GPT
   let missing = [];
   if (!user.date) missing.push('date');
   if (!user.location) missing.push('location');
   if (!user.type) missing.push('type');
   if (missing.length > 0) {
-    // Gọi GPT để hỏi info tự nhiên, không hỏi cứng
-    if (!user.gptHistory) user.gptHistory = [];
-    let gptHistoryForCall = [...user.gptHistory, { role: 'user', content: messageText }];
-    let gptReply = await callOpenAI(gptHistoryForCall, messageText);
-    // Nếu GPT trả lời quá ngắn hoặc không tự nhiên thì fallback
-    if (!gptReply || gptReply.length < 10) {
-      gptReply = 'Cody cảm ơn bạn đã nhắn tin! Bạn có thể cho Cody biết thêm về ngày tổ chức, địa điểm hoặc mong muốn của mình không ạ?';
-    }
-    user.gptHistory.push({ role: 'user', content: messageText });
-    const replyParts = gptReply.split(/\n+/).map(s => s.trim()).filter(Boolean);
-    for (const part of replyParts) {
-      user.gptHistory.push({ role: 'assistant', content: part });
-      await sendMessage(senderId, part);
-    }
+    if (!user.date) await sendMessage(senderId, 'Cho Cody xin ngày tổ chức luôn nha');
+    if (!user.location) await sendMessage(senderId, 'Cho Cody xin địa điểm tổ chức luôn nha (SG hay ở tỉnh nè...)');
+    if (!user.type) await sendMessage(senderId, 'Lễ cưới của mình là sáng lễ, chiều tiệc hay tiệc trưa ha?');
     memory[senderId] = user; saveMemory();
     return;
   }
@@ -226,10 +144,6 @@ async function handleMessage(senderId, messageText) {
 
   // Đủ info, gửi gói ưu đãi 1 lần (chỉ gửi khi đã đủ info)
   if (user.date && user.location && user.type && !user.hasSentPackages) {
-    // Đảm bảo không bị block bởi agentBlockedUntil hoặc các trạng thái khác
-    if (user.agentBlockedUntil && Date.now() < user.agentBlockedUntil) {
-      return;
-    }
     user.hasSentPackages = true;
     memory[senderId] = user; saveMemory();
     await sendMessage(senderId, 'Dạ, dưới đây là 3 gói ưu đãi của tháng này nhen, nhiều phần quà tặng kèm và số lượng có hạn nè ❤️');
@@ -251,27 +165,21 @@ async function handleMessage(senderId, messageText) {
   }
 
   // Nếu đã đủ info, đã gửi ưu đãi, nhưng khách hỏi lại về giá/gói/ưu đãi thì nhắc lại 3 gói ưu đãi
-  // Chỉ nhắc lại 3 gói ưu đãi nếu KHÁCH chưa hỏi trong vòng 3 phút gần nhất
   if (
     user.hasSentPackages &&
     /giá|gói|ưu đãi|package|bảng giá|bao nhiêu|khuyến mãi|khuyến mại|promotion|offer/i.test(lower)
   ) {
-    const now = Date.now();
-    if (!user.lastSentPackagesReminder || now - user.lastSentPackagesReminder > 3 * 60 * 1000) {
-      await sendMessage(senderId, 'Dạ, Cody nhắc lại 3 gói ưu đãi của tháng bên em nhen ❤️');
-      // Package 1
-      await sendMessage(senderId, '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ');
-      await sendMessage(senderId, null, 'https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png');
-      // Package 2
-      await sendMessage(senderId, '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ');
-      await sendMessage(senderId, null, 'https://i.postimg.cc/prJNtnMQ/1.png');
-      // Package 3
-      await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ');
-      await sendMessage(senderId, null, 'https://i.postimg.cc/hPMwbd8x/2.png');
-      user.lastSentPackagesReminder = now;
-      memory[senderId] = user; saveMemory();
-    }
-    return;
+    await sendMessage(senderId, 'Dạ, Cody nhắc lại 3 gói ưu đãi của tháng bên em nhen ❤️');
+    // Package 1
+    await sendMessage(senderId, '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ');
+    await sendMessage(senderId, null, 'https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png');
+    // Package 2
+    await sendMessage(senderId, '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ');
+    await sendMessage(senderId, null, 'https://i.postimg.cc/prJNtnMQ/1.png');
+    // Package 3
+    await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ');
+    await sendMessage(senderId, null, 'https://i.postimg.cc/hPMwbd8x/2.png');
+    // Không return, để bot vẫn tiếp tục trả lời tự nhiên bằng GPT nếu cần
   }
 
   // --- Kết thúc block ưu đãi ---
@@ -355,43 +263,32 @@ async function handleMessage(senderId, messageText) {
   // 3. Sau khi gửi 3 gói package, KHÔNG gửi thêm dòng ưu đãi slot nữa (theo yêu cầu mới)
 
   // Opening messages
-  // Đã loại bỏ các dòng chào/mở đầu cứng theo yêu cầu, không gửi openingFewShot nữa
-
-  // Nếu đã gửi 3 package và đã gửi dòng ưu đãi slot, cho phép dùng lại GPT nếu không trùng rule cứng
-  if (user.hasSentPackages) {
-    // Check các rule cứng sau khi gửi package
-    // Nếu trùng rule cứng thì vẫn ưu tiên trả lời rule cứng và return
-    if (
-      /giá|gói|ưu đãi|package|bảng giá|bao nhiêu|khuyến mãi|khuyến mại|promotion|offer/i.test(lower)
-      || /sameday edit là gì|sde là gì/i.test(lower)
-      || /(bên anh có nhận đi tỉnh|nhà em ở tỉnh|em ở tỉnh|đi tỉnh không)/i.test(lower)
-      || /đặt trong tháng.*(mới có|mới được).*ưu đãi|ưu đãi.*trong tháng/i.test(lower)
-      || /(phí đi lại|phí di chuyển|phí xe|phí khách sạn|phí phát sinh)/i.test(lower)
-      || /(lễ nhà thờ|hôn phối).*phát sinh.*không|có phát sinh.*lễ nhà thờ|có phát sinh.*hôn phối/i.test(lower) && /trong ngày|trong ngày cưới|cùng ngày/i.test(lower)
-      || /(lễ nhà thờ|hôn phối).*tách ngày|ngày khác|khác ngày/i.test(lower)
-      || /để em bàn lại với chồng|em hỏi ý.*gia đình|em hỏi ý thêm gia đình/i.test(lower)
-      || /cho em book|em muốn book|em muốn book gói|em muốn book package|em muốn đặt gói|em muốn đặt package|em muốn book gói package/i.test(lower)
-      || /giá.*1 buổi|giá quay 1 buổi|giá chụp 1 buổi|giá 1 buổi chụp|giá 1 buổi quay|giá 1 buổi|giá quay chụp 1 buổi|giá 1 buổi chụp hình quay phim|giá 1 buổi quay phim chụp hình/i.test(lower)
-    ) {
-      return;
+  const OPENING_MESSAGES = [
+    'hi', 'tư vấn giúp em', 'tư vấn', 'quay giá bao nhiêu', 'chụp giá bao nhiêu',
+    'quay chụp giá bao nhiêu', 'em muốn hỏi gói quay chụp', 'em muốn tư vấn cưới',
+    'cho em hỏi giá quay chụp'
+  ];
+  if (!user.sessionStarted && OPENING_MESSAGES.some(msg => lower.includes(msg))) {
+    user.sessionStarted = true;
+    memory[senderId] = user; saveMemory();
+    // Ưu tiên dùng few-shot style: gửi từng câu như assistant mẫu
+    const openingFewShot = [
+      'Hello Dâu nè ❤️ Cody cảm ơn vì đã nhắn tin ạ~',
+      'Mình đã có ngày tổ chức chưa nhen?',
+      'Cho Cody xin luôn địa điểm tổ chức nha (SG hay ở tỉnh nè...) Lễ cưới của mình là sáng lễ chiều tiệc hay tiệc trưa ha.'
+    ];
+    for (const part of openingFewShot) {
+      await sendMessage(senderId, part);
     }
-    // Nếu không trùng rule cứng thì cho phép gọi lại GPT
+    return;
   }
-  // Nếu không khớp rule, gọi GPT-4.1 Turbo với prompt tự nhiên
-  if (!user.gptHistory) user.gptHistory = [];
-  let gptHistoryForCall = [...user.gptHistory, { role: 'user', content: messageText }];
-  let gptReply = await callOpenAI(gptHistoryForCall, messageText);
-  // Xử lý nếu GPT trả lời quá ngắn hoặc không tự nhiên
-  if (gptReply && gptReply.length < 10) {
-    gptReply = 'Cody cảm ơn bạn đã nhắn tin! Bạn có thể cho Cody biết thêm về ngày tổ chức, địa điểm hoặc mong muốn của mình không ạ?';
+
+  // Nếu đã gửi 3 package thì không gọi GPT nữa, chỉ trả lời rule cứng
+  if (user.hasSentPackages) {
+    return;
   }
-  user.gptHistory.push({ role: 'user', content: messageText });
-  // Tách câu trả lời thành nhiều đoạn nếu có xuống dòng, gửi từng đoạn như người thật
-  const replyParts = gptReply.split(/\n+/).map(s => s.trim()).filter(Boolean);
-  for (const part of replyParts) {
-    user.gptHistory.push({ role: 'assistant', content: part });
-    await sendMessage(senderId, part);
-  }
+  // Nếu không khớp rule cứng nào thì trả lời mặc định
+  await sendMessage(senderId, 'Cody cảm ơn bạn đã nhắn tin! Bạn có thể cho Cody biết thêm về ngày tổ chức, địa điểm hoặc mong muốn của mình không ạ?');
   memory[senderId] = user; saveMemory();
   return;
 
