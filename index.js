@@ -98,16 +98,18 @@ async function handleMessage(senderId, messageText) {
 
   // Ưu tiên nhận diện yêu cầu package cụ thể (1 quay 1 chụp, 2 quay 2 chụp, ...)
   if (/1\s*quay.*1\s*chụp|1\s*chụp.*1\s*quay/i.test(lower)) {
-    // Gói 1 quay 1 chụp (Package 3)
-    await sendMessage(senderId, 'Dạ, gói **1 máy quay + 1 máy chụp** (Package 3) bên em giá 9.500.000đ, đã bao gồm quay phim phóng sự và chụp hình phóng sự (hỗ trợ chụp thêm hình TT) trọn ngày cưới nha!');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/hPMwbd8x/2.png');
-    await sendMessage(senderId, 'Ngoài ra, bên em còn 2 gói cao hơn nếu mình cần nhiều máy hơn, Cody gửi luôn để mình tham khảo nhé:');
-    await sendMessage(senderId, '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png');
-    await sendMessage(senderId, '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ');
-    await sendMessage(senderId, null, 'https://i.postimg.cc/prJNtnMQ/1.png');
-    user.hasSentPackages = true;
-    memory[senderId] = user; saveMemory();
+    // Chỉ gửi 1 lần, không lặp lại nếu đã gửi package
+    if (!user.hasSentPackages) {
+      await sendMessage(senderId, 'Dạ, gói **1 máy quay + 1 máy chụp** (Package 3) bên em giá 9.500.000đ, đã bao gồm quay phim phóng sự và chụp hình phóng sự (hỗ trợ chụp thêm hình TT) trọn ngày cưới nha!');
+      await sendMessage(senderId, null, 'https://i.postimg.cc/hPMwbd8x/2.png');
+      await sendMessage(senderId, 'Ngoài ra, bên em còn 2 gói cao hơn nếu mình cần nhiều máy hơn, Cody gửi luôn để mình tham khảo nhé:');
+      await sendMessage(senderId, '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ');
+      await sendMessage(senderId, null, 'https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png');
+      await sendMessage(senderId, '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ');
+      await sendMessage(senderId, null, 'https://i.postimg.cc/prJNtnMQ/1.png');
+      user.hasSentPackages = true;
+      memory[senderId] = user; saveMemory();
+    }
     return;
   }
   if (/2\s*quay.*2\s*chụp|2\s*chụp.*2\s*quay/i.test(lower)) {
