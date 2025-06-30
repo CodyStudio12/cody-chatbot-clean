@@ -63,6 +63,10 @@ async function sendMessage(recipientId, message, imageUrl = null) {
 
 // Main logic: handle message for each user
 async function handleMessage(senderId, messageText) {
+  // Nếu agent đã trả lời (block), bot không trả lời nữa
+  if (user.agentBlockedUntil && Date.now() < user.agentBlockedUntil) {
+    return;
+  }
   // Load or init user state
   let user = memory[senderId] || {
     date: null, location: null, type: null, hasSentPackages: false, lastInteraction: Date.now()
