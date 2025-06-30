@@ -1,9 +1,9 @@
 {
   "name": "facebook-gpt-wedding-bot",
   "version": "1.0.0",
-  "main": "bot_clean.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node bot_clean.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
