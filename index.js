@@ -150,6 +150,7 @@ async function handleMessage(senderId, messageText) {
   // Đủ info, gửi gói ưu đãi 1 lần (chỉ gửi khi đã đủ info)
   if (user.date && user.location && user.type && !user.hasSentPackages) {
     user.hasSentPackages = true;
+    user.hasSentSlotMessage = false;
     memory[senderId] = user; saveMemory();
     await sendMessage(senderId, 'Dạ, dưới đây là 3 gói ưu đãi của tháng này nhen, nhiều phần quà tặng kèm và số lượng có hạn nè ❤️');
     // Package 1
@@ -161,9 +162,14 @@ async function handleMessage(senderId, messageText) {
     // Package 3
     await sendMessage(senderId, '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ');
     await sendMessage(senderId, null, 'https://i.postimg.cc/hPMwbd8x/2.png');
-    // Sau 10s gửi thêm dòng ưu đãi slot
+    // Sau 10s gửi thêm dòng ưu đãi slot, chỉ gửi 1 lần duy nhất
     setTimeout(() => {
-      sendMessage(senderId, 'Mình xem thử 3 gói Cody đang ưu đãi nhen, hiện tại còn vài slot thôi ạ');
+      let mem = memory[senderId] || {};
+      if (!mem.hasSentSlotMessage) {
+        sendMessage(senderId, 'Mình xem thử 3 gói Cody đang ưu đãi nhen, hiện tại còn vài slot thôi ạ');
+        mem.hasSentSlotMessage = true;
+        memory[senderId] = mem; saveMemory();
+      }
     }, 10000);
     // Không gọi GPT nữa sau khi đã gửi 3 package, chỉ gửi cứng
     return;
@@ -266,9 +272,14 @@ async function handleMessage(senderId, messageText) {
     return;
   }
 
-  // Nếu không khớp rule cứng nào thì trả lời mặc định
-  await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhen.');
-  memory[senderId] = user; saveMemory();
+  // Nếu không khớp rule cứng nào thì chỉ trả lời mặc định nếu chưa gửi package
+  if (!user.hasSentPackages) {
+    await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhen.');
+    memory[senderId] = user; saveMemory();
+  } else {
+    // Đã gửi package, không trả lời gì nữa
+    memory[senderId] = user; saveMemory();
+  }
   return;
 }
 
