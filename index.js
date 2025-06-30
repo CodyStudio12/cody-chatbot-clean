@@ -341,13 +341,7 @@ async function handleMessage(senderId, messageText) {
     return;
   }
 
-  // 3. Sau khi gửi 3 gói package, nhắn thêm ưu đãi
-  if (user.hasSentPackages && !user.hasSentUuDai) {
-    await sendMessage(senderId, 'Ba gói này bên anh đang có ưu đãi trong tháng, hiện tại còn vài slot cuối thui à');
-    user.hasSentUuDai = true;
-    memory[senderId] = user; saveMemory();
-    // Không return, để tránh chặn các reply tiếp theo
-  }
+  // 3. Sau khi gửi 3 gói package, KHÔNG gửi thêm dòng ưu đãi slot nữa (theo yêu cầu mới)
 
   // Opening messages
   const OPENING_MESSAGES = [
@@ -358,15 +352,22 @@ async function handleMessage(senderId, messageText) {
   if (!user.sessionStarted && OPENING_MESSAGES.some(msg => lower.includes(msg))) {
     user.sessionStarted = true;
     memory[senderId] = user; saveMemory();
-    await sendMessage(senderId, [
+    // Ưu tiên dùng few-shot style: gửi từng câu như assistant mẫu
+    const openingFewShot = [
       'Hello Dâu nè ❤️ Cody cảm ơn vì đã nhắn tin ạ~',
-      'Mình đã có **ngày tổ chức** chưa nhen?',
-      'Và cho Cody xin luôn **địa điểm tổ chức** nha (SG hay ở tỉnh nè...)',
-      'Lễ cưới của mình là sáng lễ chiều tiệc hay tiệc trưa ha.'
-    ]);
+      'Mình đã có ngày tổ chức chưa nhen?',
+      'Cho Cody xin luôn địa điểm tổ chức nha (SG hay ở tỉnh nè...) Lễ cưới của mình là sáng lễ chiều tiệc hay tiệc trưa ha.'
+    ];
+    for (const part of openingFewShot) {
+      await sendMessage(senderId, part);
+    }
     return;
   }
 
+  // Nếu đã gửi 3 package thì không gọi GPT nữa, chỉ trả lời rule cứng
+  if (user.hasSentPackages) {
+    return;
+  }
   // Nếu không khớp rule, gọi GPT-4.1 Turbo với prompt tự nhiên
   if (!user.gptHistory) user.gptHistory = [];
   user.gptHistory.push({ role: 'user', content: messageText });
