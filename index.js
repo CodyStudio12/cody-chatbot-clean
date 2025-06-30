@@ -150,6 +150,74 @@ async function handleMessage(senderId, messageText) {
   user.lastInteraction = Date.now();
   const lower = messageText.toLowerCase();
 
+  // --- Nhận diện info, hỏi tiếp info, gửi ưu đãi, ưu tiên package ---
+  // Regex nhận diện thông tin (khai báo 1 lần ở đầu hàm)
+  if (!user.LOCATION_REGEX) user.LOCATION_REGEX = /(sài gòn|sg|hcm|long an|nhà bè|nha trang|vũng tàu|biên hòa|cần thơ|quận \d+|q\d+|bình thạnh|bình tân|tân bình|tân phú|đức hòa|đức huệ|cà mau|bến tre|vĩnh long|trà vinh|đồng tháp|ba tri)/i;
+  if (!user.TYPE_REGEX) user.TYPE_REGEX = /(sáng lễ|chiều tiệc|tiệc trưa)/i;
+  if (!user.date && /\d{1,2}[/\-]\d{1,2}([/\-]\d{2,4})?/.test(lower)) user.date = messageText;
+  if (!user.location && user.LOCATION_REGEX.test(lower)) user.location = messageText;
+  if (!user.type && user.TYPE_REGEX.test(lower)) user.type = messageText;
+  memory[senderId] = user; saveMemory();
+
+  // Hỏi tiếp nếu thiếu info (khai báo biến missing duy nhất)
+  let missing = [];
+  if (!user.date) missing.push('**hỏi ngày tổ chức cưới** của mình luôn nè');
+  if (!user.location) missing.push('**hỏi địa điểm tổ chức** luôn nha');
+  if (!user.type) missing.push('**sáng lễ chiều tiệc hay tiệc trưa** luôn nha');
+  if (missing.length > 0) {
+    for (const msg of missing) await sendMessage(senderId, `Cho Cody xin ${msg}`);
+    return;
+  }
+
+  // Ưu tiên nhận diện yêu cầu package cụ thể (1 quay 1 chụp, 2 quay 2 chụp, ...)
+  if (/1\s*quay.*1\s*chụp|1\s*chụp.*1\s*quay/i.test(lower)) {
+    await sendMessage(senderId, [
+      'Dạ, gói **1 máy quay + 1 máy chụp** (Package 3) bên em giá 9.500.000đ, đã bao gồm quay phim phóng sự và chụp hình phóng sự (hỗ trợ chụp thêm hình TT) trọn ngày cưới nha!\n👉 https://i.postimg.cc/hPMwbd8x/2.png',
+      'Ngoài ra, bên em còn 2 gói cao hơn nếu mình cần nhiều máy hơn, Cody gửi luôn để mình tham khảo nhé:',
+      '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ\n👉 https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png',
+      '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ\n👉 https://i.postimg.cc/prJNtnMQ/1.png'
+    ]);
+    user.hasSentPackages = true;
+    memory[senderId] = user; saveMemory();
+    return;
+  }
+  if (/2\s*quay.*2\s*chụp|2\s*chụp.*2\s*quay/i.test(lower)) {
+    await sendMessage(senderId, [
+      'Dạ, gói **2 máy quay + 2 máy chụp** (Package 1) bên em giá 16.500.000đ, full ekip quay chụp trọn ngày cưới luôn nha!\n👉 https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png',
+      'Ngoài ra, bên em còn 2 gói nhẹ hơn nếu mình muốn tiết kiệm chi phí, Cody gửi luôn để mình tham khảo nhé:',
+      '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ\n👉 https://i.postimg.cc/prJNtnMQ/1.png',
+      '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ\n👉 https://i.postimg.cc/hPMwbd8x/2.png'
+    ]);
+    user.hasSentPackages = true;
+    memory[senderId] = user; saveMemory();
+    return;
+  }
+  if (/1\s*quay.*2\s*chụp|2\s*chụp.*1\s*quay|1\s*chụp.*2\s*quay|2\s*quay.*1\s*chụp/i.test(lower)) {
+    await sendMessage(senderId, [
+      'Dạ, gói **1 máy quay + 2 máy chụp** (Package 2) bên em giá 12.500.000đ, phù hợp cho lễ cưới đông khách hoặc muốn nhiều góc chụp đẹp nha!\n👉 https://i.postimg.cc/prJNtnMQ/1.png',
+      'Ngoài ra, bên em còn 2 gói khác để mình tham khảo thêm:',
+      '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ\n👉 https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png',
+      '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ\n👉 https://i.postimg.cc/hPMwbd8x/2.png'
+    ]);
+    user.hasSentPackages = true;
+    memory[senderId] = user; saveMemory();
+    return;
+  }
+
+  // Đủ info, gửi gói ưu đãi 1 lần (luôn luôn gửi nếu đủ info, không bỏ sót)
+  if (user.date && user.location && user.type && !user.hasSentPackages) {
+    user.hasSentPackages = true;
+    memory[senderId] = user; saveMemory();
+    await sendMessage(senderId, [
+      'Dạ, dưới đây là 3 gói ưu đãi của tháng bên em nhen ❤️',
+      '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ\n👉 https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png',
+      '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ\n👉 https://i.postimg.cc/prJNtnMQ/1.png',
+      '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ\n👉 https://i.postimg.cc/hPMwbd8x/2.png'
+    ]);
+    // Sau khi gửi ưu đãi, tiếp tục trả lời tự nhiên bằng GPT nếu cần
+    // Không return ở đây, để bot có thể tiếp tục trả lời tự nhiên bằng GPT
+  }
+
   // Nếu đã đủ info, đã gửi ưu đãi, nhưng khách hỏi lại về giá/gói/ưu đãi thì nhắc lại 3 gói ưu đãi
   if (
     user.hasSentPackages &&
@@ -157,13 +225,14 @@ async function handleMessage(senderId, messageText) {
   ) {
     await sendMessage(senderId, [
       'Dạ, Cody nhắc lại 3 gói ưu đãi của tháng bên em nhen ❤️',
-      '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ\n👉 https://www.facebook.com/photo1',
-      '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ\n👉 https://www.facebook.com/photo2',
-      '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ\n👉 https://www.facebook.com/photo3'
+      '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ\n👉 https://i.postimg.cc/Gm4VhfkS/Peach-Modern-Wedding-Save-the-Date-Invitation-1.png',
+      '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ\n👉 https://i.postimg.cc/prJNtnMQ/1.png',
+      '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ\n👉 https://i.postimg.cc/hPMwbd8x/2.png'
     ]);
     // Không return, để bot vẫn tiếp tục trả lời tự nhiên bằng GPT nếu cần
   }
 
+  // --- Kết thúc block ưu đãi ---
 
   // 1. Sameday Edit là gì
   if (/sameday edit là gì|sde là gì/i.test(lower)) {
@@ -182,7 +251,7 @@ async function handleMessage(senderId, messageText) {
     let xungHo = 'Dâu';
     if (/anh\b/.test(lower)) xungHo = 'anh';
     if (/chị\b/.test(lower)) xungHo = 'chị';
-    await sendMessage(senderId, `Đúng rồi ${xungHo}/anh/chị, mình đặt sớm để giữ ngày, block team và block ưu đãi luôn á`);
+    await sendMessage(senderId, `Đúng rồi nè, mình đặt sớm để giữ ngày, block team và block ưu đãi luôn á`);
     return;
   }
 
@@ -284,50 +353,8 @@ async function handleMessage(senderId, messageText) {
   memory[senderId] = user; saveMemory();
   return;
 
-  // Regex nhận diện thông tin
-  const LOCATION_REGEX = /(sài gòn|sg|hcm|long an|nhà bè|nha trang|vũng tàu|biên hòa|cần thơ|quận \d+|q\d+|bình thạnh|bình tân|tân bình|tân phú|đức hòa|đức huệ|cà mau|bến tre|vĩnh long|trà vinh|đồng tháp|ba tri)/i;
-  const TYPE_REGEX = /(sáng lễ|chiều tiệc|tiệc trưa)/i;
-  if (!user.date && /\d{1,2}[/\-]\d{1,2}([/\-]\d{2,4})?/.test(lower)) user.date = messageText;
-  if (!user.location && LOCATION_REGEX.test(lower)) user.location = messageText;
-  if (!user.type && TYPE_REGEX.test(lower)) user.type = messageText;
-  memory[senderId] = user; saveMemory();
-
-  // Hỏi tiếp nếu thiếu info
-  const missing = [];
-  if (!user.date) missing.push('**hỏi ngày tổ chức cưới** của mình luôn nè');
-  if (!user.location) missing.push('**hỏi địa điểm tổ chức** luôn nha');
-  if (!user.type) missing.push('**sáng lễ chiều tiệc hay tiệc trưa** luôn nha');
-  if (missing.length > 0) {
-    for (const msg of missing) await sendMessage(senderId, `Cho Cody xin ${msg}`);
-    return;
-  }
-
-  // Đủ info, gửi gói ưu đãi 1 lần
-  if (!user.hasSentPackages) {
-    user.hasSentPackages = true;
-    memory[senderId] = user; saveMemory();
-    await sendMessage(senderId, [
-      'Dạ, dưới đây là 3 gói ưu đãi của tháng bên em nhen ❤️',
-      '🎁 **Package 1:** 2 máy quay + 2 máy chụp, giá 16.500.000đ\n👉 https://www.facebook.com/photo1',
-      '🎁 **Package 2:** 1 máy quay + 2 máy chụp, giá 12.500.000đ\n👉 https://www.facebook.com/photo2',
-      '🎁 **Package 3:** 1 máy quay + 1 máy chụp, giá 9.500.000đ\n👉 https://www.facebook.com/photo3'
-    ]);
-    // Sau khi gửi ưu đãi, tiếp tục gọi GPT để tư vấn thêm nếu cần
-    // Không return ở đây, để bot có thể tiếp tục trả lời tự nhiên bằng GPT
-  }
-
   // Nếu không khớp logic nào, kiểm tra block reply 3 ngày hoặc 30 phút sau agent
-  const now = Date.now();
-  const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
-  const THIRTY_MINUTES = 30 * 60 * 1000;
-  if ((user.blockedUntil && now < user.blockedUntil) || (user.agentBlockedUntil && now < user.agentBlockedUntil)) {
-    // Đang bị block, không trả lời nữa
-    return;
-  }
-  // Gửi tin nhắn và block reply 3 ngày
-  await sendMessage(senderId, 'Mình đợi Cody 1 xíu nhen');
-  user.blockedUntil = now + THREE_DAYS;
-  memory[senderId] = user; saveMemory();
+  // (đoạn này không còn cần thiết vì đã return ở trên)
 }
 
 // Facebook webhook: nhận tin nhắn từ nhiều khách
