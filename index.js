@@ -81,13 +81,13 @@ async function callOpenAI(history, userMsg) {
     { role: 'user', content: userMsg }
   ];
   try {
-    const res = await openai.createChatCompletion({
+    const res = await openai.chat.completions.create({
       model: 'gpt-4-1106-preview',
       messages,
       max_tokens: 300,
       temperature: 0.7
     });
-    return res.data.choices[0].message.content.trim();
+    return res.choices[0].message.content.trim();
   } catch (e) {
     // Log chi tiết lỗi OpenAI để debug trên Render
     if (e.response) {
